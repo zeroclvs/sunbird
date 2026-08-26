@@ -18,6 +18,13 @@ module Sunbird
       def component(instance_id, name)
         @world.component(instance_id, name)
       end
+
+      def relation_targets(kind:, source_id:)
+        @world.relation_targets(
+          kind: kind,
+          source_id: source_id
+        )
+      end
     end
   end
 end

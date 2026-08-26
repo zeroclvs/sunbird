@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module Sunbird
-  VERSION = "0.2a"
+  VERSION = "0.2b"
 end

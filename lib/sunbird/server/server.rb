@@ -23,6 +23,8 @@ module Sunbird
         spawns,
         entities
       )
+
+      establish_initial_relations
     end
 
     def tick(input:)
@@ -70,6 +72,25 @@ module Sunbird
 
       player_instance ||
         raise("level does not contain a player spawn")
+    end
+
+    def establish_initial_relations
+      @world.instance_ids.each do |instance_id|
+        next if instance_id == @player_instance
+
+        identity = @world.component(
+          instance_id,
+          :identity
+        )
+
+        next unless identity.entity == :goblin
+
+        @world.add_relation(
+          kind: :targets,
+          source_id: instance_id,
+          target_id: @player_instance
+        )
+      end
     end
 
     def instantiate(entity, spawn)

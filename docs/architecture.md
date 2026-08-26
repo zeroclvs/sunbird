@@ -1,4 +1,4 @@
-# Sunbird v0.2 Architecture
+# Sunbird v0.2b Architecture
 
 ## Authority
 

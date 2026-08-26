@@ -5,6 +5,7 @@ module Sunbird
     def initialize
       @next_instance_id = 0
       @component_tables = {}
+      @relations = RuntimeRelations.new
     end
 
     def spawn(**components)
@@ -36,6 +37,26 @@ module Sunbird
     def set_component(instance_id, name, component)
       validate_instance!(instance_id)
       table_for(name)[instance_id] = component
+    end
+
+    def add_relation(kind:, source_id:, target_id:)
+      validate_instance!(source_id)
+      validate_instance!(target_id)
+
+      @relations.add(
+        kind: kind,
+        source_id: source_id,
+        target_id: target_id
+      )
+    end
+
+    def relation_targets(kind:, source_id:)
+      validate_instance!(source_id)
+
+      @relations.targets(
+        kind: kind,
+        source_id: source_id
+      )
     end
 
     def view
