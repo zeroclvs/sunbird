@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+module Sunbird
+  class Entity
+    module Loader
+      module_function
+
+      def load(path)
+        absolute_path = File.expand_path(path)
+
+        unless File.extname(absolute_path) == ".rb"
+          raise ArgumentError,
+            "unsupported entity source: #{absolute_path}"
+        end
+
+        require absolute_path
+
+        source_name = constant_name_for(absolute_path)
+        source = Sources.const_get(source_name, false)
+
+        Registry.new(source)
+      end
+
+      def constant_name_for(path)
+        File.basename(path, ".rb")
+          .split("_")
+          .map!(&:capitalize)
+          .join
+      end
+      private_class_method :constant_name_for
+    end
+  end
+end
