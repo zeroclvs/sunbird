@@ -1,151 +1,94 @@
-# Sunbird v0.2c
+# Sunbird
 
-Sunbird is an experimental tick-based RPG simulation engine
-prototyped in Ruby.
+Sunbird is an experimental tick-based RPG engine written in Ruby.
 
-Version 0.2 reorganizes the day-one prototype around a clearer
-single-process client/server authority model inspired by Quake.
+The project explores a data-oriented simulation architecture inspired by Quake-style authoritative world state, while keeping the design portable to systems languages such as Rust or Odin.
 
-## Core model
+**Current version:** `v0.2c`
 
-The important runtime boundary is:
+## Current state
+
+Sunbird currently has:
+
+* integer runtime instance IDs;
+* array-backed component storage;
+* reusable entity definitions and level spawns;
+* immutable level terrain and mutable runtime world state;
+* an authoritative `Server#tick`;
+* input snapshots and command-based simulation;
+* runtime entity relations;
+* terrain and entity collision;
+* wandering and relation-driven chase behavior;
+* a simple ASCII renderer.
+
+The current test level contains a player (`P`), goblins (`G`), grass, water, and impassable boundaries.
+
+Goblin chase behavior is intentionally primitive. It prefers horizontal movement and does not yet perform pathfinding, so NPCs can become stuck behind terrain or other entities.
+
+## Architecture
+
+The core simulation path is:
 
 ```text
-input / presentation
-        |
-        v
+Input::Snapshot
+      ↓
 Server#tick
-        |
-        +--> TickBuilder
-        |       |
-        |       +--> Activation
-        |       +--> World::View
-        |       +--> Level
-        |       +--> input snapshot
-        |       |
-        |       v
-        |   CommandBuffer
-        |
-        +--> Resolver
-                |
-                v
-              World
+      ↓
+TickBuilder
+      ↓
+CommandBuffer
+      ↓
+Resolver
+      ↓
+World
 ```
 
-`Server#tick` is the single authoritative operation that advances
-simulation state. `TickBuilder` reads the structures needed to plan
-work. `Resolver` performs mutations under server authority.
+`Server#tick` is the authoritative operation that advances simulation state.
 
-There is deliberately no `Tick` data record in v0.2.
+`TickBuilder` reads world state, relations, active instances, and input to produce intent. `Resolver` applies commands and performs authoritative world mutations.
 
-## Terminology
+Rendering remains outside the simulation domain.
 
-### Entity
+See [`docs/architecture.md`](docs/architecture.md) for the more detailed design notes.
 
-An `Entity` is now a reusable content definition: a component recipe
-such as `:player` or `:goblin`.
+## Requirements
 
-```text
-:goblin
-  renderable
-  health
-  behavior
-  collision
-```
+Ruby 3.2 or newer.
 
-### Spawn
-
-A level stores only a placement of an entity definition:
-
-```text
-Spawn(entity: :goblin, x: 14, y: 10)
-```
-
-### InstanceId
-
-When the server loads a level, each spawn becomes a runtime instance.
-The returned non-negative integer is conceptually an `InstanceId`.
-
-Runtime component tables are indexed by InstanceId.
-
-## Activation
-
-The old `Accessibility` name is gone.
-
-`Server::Activation` chooses which runtime instances are active for
-the current planning pass. The initial policy simply returns every
-instance. A spatial or relational policy can replace it later without
-changing `Server#tick`.
-
-## Entity source data
-
-Reusable entity definitions live temporarily in Ruby:
-
-```text
-content/entities/core.rb
-```
-
-Level source data lives in:
-
-```text
-content/levels/test_field.rb
-```
-
-Both are temporary source representations behind loaders. The long
-term target remains compiled binary level/content data.
-
-## Rendering
-
-Rendering is intentionally unchanged in this revision. It still
-projects `World::View + Level` into a frame and then emits ASCII.
-The client/server refactor is focused on simulation authority.
-
-## Run
-
-Ruby 3.2+ is required.
+Install dependencies:
 
 ```sh
 bundle install
+```
+
+## Run
+
+```sh
 bundle exec ruby bin/sunbird
 ```
 
 Controls:
 
 ```text
-W / Up Arrow    north
-S / Down Arrow  south
-A / Left Arrow  west
-D / Right Arrow east
-Q               quit
+W / ↑    move north
+S / ↓    move south
+A / ←    move west
+D / →    move east
+Q        quit
 ```
 
 ## Tests
 
-Run all tests:
+Run the complete test suite:
 
 ```sh
 bundle exec ruby -Itest -e \
   'Dir["test/*_test.rb"].sort.each { |file| require_relative file }'
 ```
 
-## Deliberately deferred
+## Project status
 
-Sunbird v0.2 still does not introduce:
+Sunbird is an architecture and gameplay prototype, not a production-ready engine.
 
-- goblin AI;
-- runtime relations;
-- combat;
-- scheduler/timing wheel;
-- wall-clock pacing;
-- deterministic replay;
-- threads or Ractors;
-- VFS;
-- binary level compiler;
-- SDL/raylib;
-- an ECS framework;
-- sparse sets/archetype storage;
-- pathfinding;
-- networking.
+Several systems are deliberately deferred until the core simulation model is better understood, including pathfinding, combat, background scheduling, binary level data, graphical rendering, networking, and multithreading.
 
-The next useful milestone is to let goblin behavior participate in
-`TickBuilder` and produce the same command types as player input.
