@@ -33,7 +33,7 @@ module Sunbird
               layer: 10
             ),
             behavior: World::Behavior.new(
-              kind: :wander
+              kind: :chase
             ),
             collision: World::Collision.new(
               blocks_movement: true

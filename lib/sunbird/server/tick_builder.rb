@@ -21,7 +21,6 @@ module Sunbird
         )
 
         commands = []
-
         active_instances.each do |instance_id|
           command =
             if instance_id == player_instance
@@ -75,6 +74,8 @@ module Sunbird
           nil
         when :wander
           wander_move(instance_id)
+        when :chase
+          chase_move(world, instance_id)
         else
           raise ArgumentError,
             "unknown behavior: #{behavior.kind.inspect}"
@@ -83,6 +84,40 @@ module Sunbird
 
       def wander_move(instance_id)
         dx, dy = WANDER_DIRECTIONS.sample
+
+        Commands::Move.new(
+          instance: instance_id,
+          dx: dx,
+          dy: dy
+        )
+      end
+
+      def chase_move(world, instance_id)
+        target_id = world.relation_targets(
+          kind: :targets,
+          source_id: instance_id
+        ).first
+        return unless target_id
+
+        position = world.component(
+          instance_id,
+          :position
+        )
+        target_position = world.component(
+          target_id,
+          :position
+        )
+        return unless position && target_position
+
+        dx = target_position.x <=> position.x
+
+        if dx.zero?
+          dy = target_position.y <=> position.y
+        else
+          dy = 0
+        end
+
+        return if dx.zero? && dy.zero?
 
         Commands::Move.new(
           instance: instance_id,

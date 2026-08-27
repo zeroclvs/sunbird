@@ -1,4 +1,4 @@
-# Sunbird v0.2b
+# Sunbird v0.2c
 
 Sunbird is an experimental tick-based RPG simulation engine
 prototyped in Ruby.
