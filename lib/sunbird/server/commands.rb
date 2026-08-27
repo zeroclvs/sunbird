@@ -8,6 +8,12 @@ module Sunbird
         :dx,
         :dy
       )
+
+      Attack = Data.define(
+        :attacker,
+        :target,
+        :damage
+      )
     end
   end
 end
