@@ -2,32 +2,29 @@
 
 Sunbird is an experimental tick-based RPG engine written in Ruby.
 
-The project explores a data-oriented simulation architecture inspired by Quake-style authoritative world state, while keeping the design portable to systems languages such as Rust or Odin.
+It explores a data-oriented, Quake-inspired simulation model built around authoritative server ticks, indexed runtime state, explicit commands, and a clean separation between immutable level data and mutable world state.
 
-**Current version:** `v0.2c`
+**Current version:** `v0.2d`
 
 ## Current state
 
-Sunbird currently has:
+Sunbird currently includes:
 
-* integer runtime instance IDs;
-* array-backed component storage;
-* reusable entity definitions and level spawns;
-* immutable level terrain and mutable runtime world state;
-* an authoritative `Server#tick`;
-* input snapshots and command-based simulation;
-* runtime entity relations;
-* terrain and entity collision;
-* wandering and relation-driven chase behavior;
-* a simple ASCII renderer.
+- integer runtime instance IDs and array-backed component storage;
+- reusable entity definitions and level spawns;
+- authoritative `Server#tick` simulation;
+- input snapshots and command-based state changes;
+- runtime entity relations;
+- terrain and entity collision;
+- wandering and relation-driven chase behavior;
+- breadth-first grid pathfinding around terrain and blocking entities;
+- `Move` and `Attack` commands;
+- basic health damage resolution;
+- a simple ASCII renderer.
 
-The current test level contains a player (`P`), goblins (`G`), grass, water, and impassable boundaries.
-
-Goblin chase behavior is intentionally primitive. It prefers horizontal movement and does not yet perform pathfinding, so NPCs can become stuck behind terrain or other entities.
+The current test level uses `P` for the player and `G` for goblins. Goblins target the player, find a shortest route around obstacles, stop adjacent to the target, and attack.
 
 ## Architecture
-
-The core simulation path is:
 
 ```text
 Input::Snapshot
@@ -35,6 +32,10 @@ Input::Snapshot
 Server#tick
       ↓
 TickBuilder
+  ├── Activation
+  ├── relations
+  ├── behavior
+  └── Pathfinder
       ↓
 CommandBuffer
       ↓
@@ -43,19 +44,13 @@ Resolver
 World
 ```
 
-`Server#tick` is the authoritative operation that advances simulation state.
+`TickBuilder` plans intent from read-only state. `Resolver` remains authoritative: it re-checks movement legality and applies world mutations.
 
-`TickBuilder` reads world state, relations, active instances, and input to produce intent. `Resolver` applies commands and performs authoritative world mutations.
-
-Rendering remains outside the simulation domain.
-
-See [`docs/architecture.md`](docs/architecture.md) for the more detailed design notes.
+See [`docs/architecture.md`](docs/architecture.md) for details.
 
 ## Requirements
 
 Ruby 3.2 or newer.
-
-Install dependencies:
 
 ```sh
 bundle install
@@ -79,8 +74,6 @@ Q        quit
 
 ## Tests
 
-Run the complete test suite:
-
 ```sh
 bundle exec ruby -Itest -e \
   'Dir["test/*_test.rb"].sort.each { |file| require_relative file }'
@@ -88,7 +81,8 @@ bundle exec ruby -Itest -e \
 
 ## Project status
 
-Sunbird is an architecture and gameplay prototype, not a production-ready engine.
+`v0.2d` is the final milestone in the 0.2 branch. Sunbird remains an architecture and gameplay prototype.
 
-Several systems are deliberately deferred until the core simulation model is better understood, including pathfinding, combat, background scheduling, binary level data, graphical rendering, networking, and multithreading.
+Pathfinding currently assumes uniform movement cost and there is no multi-agent path reservation, death/removal system, background scheduler, binary level format, graphical renderer, networking, or multithreaded simulation.
 
+The next branch (`v0.3`) is intended to clean up project structure and terminology before the simulation grows further.

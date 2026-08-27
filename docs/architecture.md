@@ -1,35 +1,21 @@
-# Sunbird v0.2c Architecture
+# Sunbird v0.2d Architecture
 
-Sunbird is a small experimental RPG engine built around an authoritative, tick-based simulation.
+Sunbird is an experimental tick-based RPG engine. The Ruby implementation is used to explore simulation semantics while keeping the logical architecture portable to systems languages later.
 
-The current Ruby implementation is intended to explore the architecture quickly while keeping the core model portable to lower-level systems languages later.
+## Core rules
 
-## Core principles
+- Runtime instances use integer IDs.
+- Hot runtime data lives in component tables rather than game-object inheritance trees.
+- Reusable `Entity` definitions are separate from level `Spawn`s and runtime instances.
+- `Level` represents immutable environment data.
+- `World` owns mutable runtime components and relations.
+- `Server#tick` is the authoritative operation that advances simulation state.
+- Player and NPC decisions produce commands rather than mutating `World`.
+- Rendering reads world state but never changes it.
 
-Sunbird currently follows a few basic rules:
-
-* runtime instances are identified by integer IDs;
-* game state is stored in component tables rather than object hierarchies;
-* reusable `Entity` definitions are separate from runtime instances;
-* `Level` data is treated as immutable environment data;
-* `World` contains mutable runtime state;
-* only the server domain advances authoritative simulation state;
-* player input and NPC behavior produce commands rather than mutating the world directly;
-* rendering reads simulation state but does not modify it.
-
-## Server authority
-
-`Server` owns the authoritative runtime simulation.
-
-The public operation that advances the game is:
-
-```text
-Server#tick(input)
-```
+## Server tick
 
 A tick is an operation, not a stored `Tick` object.
-
-Current flow:
 
 ```text
 Input::Snapshot
@@ -43,7 +29,8 @@ Server#tick
       |       +--> Level
       |       +--> World::View
       |       +--> runtime relations
-      |       +--> player / NPC behavior
+      |       +--> behaviors
+      |       +--> Pathfinder
       |       |
       |       v
       |   CommandBuffer
@@ -56,36 +43,21 @@ Server#tick
       +--> increment tick number
 ```
 
-`Server#tick` should remain small.
+`Server#tick` should remain small. Planning complexity belongs in `TickBuilder`; authoritative mutation belongs behind `Resolver`.
 
-Planning complexity belongs primarily in `TickBuilder`, while authoritative mutation is performed through `Resolver`.
+## Entities, spawns, and instances
 
-## Entity definitions and runtime instances
+`Entity` is a reusable content definition such as `:player` or `:goblin`.
 
-`Entity` represents a reusable content definition.
-
-For example, the goblin definition contains default components such as:
+A level stores placements:
 
 ```text
-:goblin
-
-Health
-Renderable
-Behavior(:chase)
-Collision
+Spawn(entity: :goblin, x: 14, y: 10)
 ```
 
-A level does not repeat those values for every goblin. It stores a `Spawn`:
+Loading a spawn creates a runtime instance identified by an integer `InstanceId`.
 
-```text
-Spawn(
-  entity: :goblin,
-  x: 14,
-  y: 10
-)
-```
-
-When the server loads the level:
+Conceptually:
 
 ```text
 Entity definition
@@ -93,21 +65,20 @@ Entity definition
 Spawn
        |
        v
-runtime instance
+runtime InstanceId
        |
-       v
-InstanceId
+       +--> Position
+       +--> Health
+       +--> Renderable
+       +--> Behavior
+       +--> Collision
 ```
 
-`InstanceId` is the conceptual name for the integer used to index runtime component tables.
+Instances created from the same definition have independent runtime state.
 
-Different instances created from the same `Entity` definition have independent mutable runtime state.
+## World and World::View
 
-## World
-
-`World` owns mutable runtime simulation data.
-
-Current component storage is array-backed and indexed by runtime instance ID.
+`World` owns mutable component tables and runtime relations.
 
 Conceptually:
 
@@ -119,31 +90,13 @@ behaviors[instance_id]
 collisions[instance_id]
 ```
 
-The implementation deliberately avoids game-object inheritance hierarchies.
-
-An instance's meaning comes from its components and relations.
-
-### World::View
-
-External server planning code normally reads runtime state through `World::View`.
-
-The view exposes queries such as:
-
-```text
-instance IDs
-components
-relation targets
-```
-
-but does not expose mutation operations such as `set_component`.
-
-This maintains a clear distinction between observation and authoritative mutation.
+`World::View` is the read-only query boundary used by planning code. It exposes instance IDs, components, and relation queries but not mutation methods such as `set_component`.
 
 ## Runtime relations
 
-Relations are first-class runtime data stored with `World`.
+Relations are stored with `World`.
 
-v0.2c currently uses a simple relation representation:
+The current relation record is:
 
 ```text
 kind
@@ -151,55 +104,39 @@ source_id
 target_id
 ```
 
-The first implemented relation is:
+The first gameplay relation is:
 
 ```text
 targets(goblin, player)
 ```
 
-At level initialization the server establishes a target relation from each goblin instance to the player instance.
+The server establishes these relations when the level is loaded. `TickBuilder` reads them to decide what a chasing goblin should do.
 
-Relations are queried through `World::View` during planning.
+Relation storage is intentionally simple and currently uses a linear edge list.
 
-Current relation storage is intentionally simple and unoptimized.
+## Activation
 
-## TickBuilder
+`Server::Activation` selects the runtime instances that participate in planning.
 
-`TickBuilder` is the planning side of the server tick.
+The v0.2 implementation activates every instance. The boundary exists so a later policy can select a smaller working set without changing `Server#tick`.
 
-Its job is to inspect the current simulation state and produce intent.
+## TickBuilder and behavior
 
-Current inputs include:
+`TickBuilder` inspects the stable input snapshot plus current read-only simulation state and produces commands.
 
-```text
-Input::Snapshot
-Level
-World::View
-Activation
-runtime relations
-```
-
-It iterates over active instances and decides what command, if any, each instance should produce.
-
-### Player
-
-Player input is translated into a movement command:
+Player movement:
 
 ```text
 Input::Snapshot
-      |
-      v
+      ↓
 player_move
-      |
-      v
-Move(instance, dx, dy)
+      ↓
+Move
 ```
 
-### NPC behavior
+NPC behavior is selected from the instance's `Behavior` component.
 
-NPC instances carry a `Behavior` component.
-
-Current behavior kinds include:
+Current kinds are:
 
 ```text
 :idle
@@ -207,109 +144,92 @@ Current behavior kinds include:
 :chase
 ```
 
-Behavior code produces the same command types used by player input.
+Player and NPC logic share the same command pipeline.
 
-This keeps decision-making separate from mutation:
+## Pathfinding
 
-```text
-player input -----+
-                  |
-NPC behavior -----+--> CommandBuffer --> Resolver --> World
-```
+`v0.2d` introduces `Server::Pathfinder`.
 
-## Chase behavior
+The current map has uniform movement cost, so pathfinding uses breadth-first search (BFS). On this grid BFS produces a shortest path without the extra machinery required by weighted search.
 
-In v0.2c goblins use their `:targets` relation to find the player.
+For chase behavior, the pathfinder:
 
-The current chase algorithm is intentionally primitive:
+1. reads the source and target positions;
+2. finds passable cells adjacent to the target;
+3. treats currently blocking runtime instances as occupied;
+4. searches for the shortest reachable route to one of those adjacent cells;
+5. returns only the next cardinal step.
 
-1. read the target relation;
-2. read goblin and target positions;
-3. move one tile toward the target;
-4. prefer the X axis while X differs;
-5. otherwise move on the Y axis.
-
-Example:
+The pathfinder plans from `World::View`; it does not mutate anything.
 
 ```text
-G . . P
+Level passability
+       +
+World blockers
+       +
+target relation
+       |
+       v
+Pathfinder
+       |
+       v
+next (dx, dy)
+       |
+       v
+Move command
 ```
 
-produces:
+### Planning is not authority
+
+Pathfinding does not replace collision checks in `Resolver`.
+
+All NPC commands for a tick are planned against the same pre-resolution world state. Another instance may therefore move before a planned command is resolved.
+
+`Resolver` always re-checks the chosen movement step against the authoritative current state.
+
+This preserves the boundary:
 
 ```text
-Move(goblin, +1, 0)
+Pathfinder / TickBuilder
+        = planned intent
+
+Resolver
+        = authoritative legality and mutation
 ```
 
-The chase planner does not check whether that move will succeed.
+There is currently no multi-agent path reservation or coordinated movement. Two goblins may plan the same destination; sequential resolution determines which one succeeds.
 
-That responsibility remains with `Resolver`.
+## Commands
 
-As a result, goblins can currently become stuck behind:
+Sunbird v0.2d has two command types.
 
-* water;
-* walls;
-* another blocking instance.
-
-There is no pathfinding or obstacle avoidance in v0.2c.
-
-These limitations are intentional and useful for evaluating later planning changes.
-
-## Commands and resolution
-
-Commands represent simulation intent.
-
-The current primary command is:
+### Move
 
 ```text
 Move(instance, dx, dy)
 ```
 
-`TickBuilder` produces commands but does not mutate `World`.
+Movement resolution checks:
 
-`Resolver` applies them under server authority.
+1. terrain passability;
+2. dynamic occupancy;
+3. then replaces `Position`.
 
-For movement it currently checks:
-
-```text
-destination inside/passable terrain?
-        |
-        v
-destination occupied by blocking instance?
-        |
-        v
-replace Position
-```
-
-Terrain collision therefore belongs to `Level`, while dynamic occupancy is determined from `World`.
-
-Sequential command resolution means runtime instance order can currently affect competing movement attempts.
-
-## Activation
-
-`Server::Activation` determines which runtime instances participate in the current planning pass.
-
-The current implementation simply activates every instance:
+### Attack
 
 ```text
-World instances
-      |
-      v
-Activation
-      |
-      v
-all InstanceIds
+Attack(attacker, target, damage)
 ```
 
-Activation is intentionally a policy boundary.
+A chasing goblin emits `Attack` when already adjacent to its target.
 
-It is not yet defined in terms of distance, visibility, pathfinding, rooms, or line of sight.
+The resolver applies damage by replacing the target's `Health` value. Health is clamped at zero.
 
-A more selective policy can be introduced later without changing the meaning of `Server#tick`.
+There is intentionally no death/removal system yet.
 
 ## Level and World
 
-Sunbird keeps immutable environment data separate from mutable simulation state.
+Static environment data and mutable simulation state remain separate.
 
 ```text
 Level
@@ -322,117 +242,70 @@ World
   runtime components
   positions
   health
-  behavior state
+  behaviors
   runtime relations
 ```
 
-The current Ruby level and entity files are temporary source representations behind loaders.
+The current Ruby content files are temporary source representations behind loaders. They are not the intended final persistent format.
 
-They are not intended to define the eventual persistent engine format.
+## Input
 
-## Input boundary
-
-Physical input remains outside the authoritative simulation.
-
-Current flow:
+Physical input stays outside the server.
 
 ```text
-terminal key
-    |
-    v
+terminal input
+      ↓
 Input::Mapper
-    |
-    v
+      ↓
 Action
-    |
-    v
+      ↓
 Input::Handoff
-    |
-    v
+      ↓
 Input::Snapshot
-    |
-    v
+      ↓
 Server#tick
 ```
 
-The server never needs to understand terminal escape sequences or physical key codes.
-
-Input is event-driven outside the server and stable for the duration of each tick.
+The server sees abstract actions rather than terminal bytes or escape sequences.
 
 ## Rendering
 
-Rendering is outside the server simulation domain.
-
-Current path:
+Rendering remains outside authoritative simulation:
 
 ```text
 Server.world_view + Server.level
-        |
-        v
+        ↓
 Render::Projector
-        |
-        v
+        ↓
 Render::Frame
-        |
-        v
+        ↓
 Render::Ascii
-        |
-        v
+        ↓
 Host::Terminal
 ```
 
-Rendering does not mutate `World`.
+Rendering never mutates `World`.
 
-The ASCII renderer is a replaceable presentation layer rather than part of the simulation architecture.
+## Known v0.2d limits
 
-## Current scope
+The final 0.2 architecture deliberately leaves several problems unresolved:
 
-Sunbird v0.2c currently demonstrates:
+- pathfinding assumes uniform tile cost;
+- paths are recalculated independently by each chasing instance;
+- there is no path cache or navigation graph;
+- there is no multi-agent reservation or crowd coordination;
+- sequential command resolution can still create temporary movement conflicts;
+- dead instances are not removed;
+- combat has no stats, equipment, armor, or damage types;
+- Activation still selects every instance;
+- simulation ticks are not wall-clock paced;
+- there is no background scheduler;
+- level data is not compiled to a binary format;
+- rendering is still ASCII;
+- there is no networking or multithreaded simulation.
 
-```text
-reusable Entity definitions
-        |
-        v
-level Spawns
-        |
-        v
-runtime instances
-        |
-        +--> components
-        |
-        +--> runtime relations
-                  |
-                  v
-              TickBuilder
-                  |
-        +---------+---------+
-        |                   |
-    player input         NPC behavior
-        |                   |
-        +---------+---------+
-                  |
-                  v
-             CommandBuffer
-                  |
-                  v
-               Resolver
-                  |
-                  v
-                World
-```
+These limits are useful boundaries for later design work rather than problems to hide inside v0.2.
 
-Systems deliberately not implemented yet include:
+## Next branch
 
-* pathfinding;
-* combat;
-* inventory;
-* background scheduling;
-* selective activation;
-* fixed real-time tick pacing;
-* compiled binary level data;
-* VFS;
-* graphical rendering;
-* networking;
-* multithreaded simulation.
-
-The current priority is to understand and refine the simulation architecture before adding those systems.
+`v0.3` is intended to focus first on naming and repository-structure cleanup before adding more systems. That cleanup can also remove stale version-specific comments and tighten terminology around runtime IDs, entity definitions, level data, and server planning.

@@ -12,6 +12,11 @@ module Sunbird
               level,
               command
             )
+          in Commands::Attack
+            resolve_attack(
+              world,
+              command
+            )
           else
             raise ArgumentError,
               "unsupported command: #{command.inspect}"
@@ -49,6 +54,26 @@ module Sunbird
           World::Position.new(
             x: next_x,
             y: next_y
+          )
+        )
+      end
+
+
+      def resolve_attack(world, command)
+        health = world.component(
+          command.target,
+          :health
+        )
+        return unless health
+
+        current = [health.current - command.damage, 0].max
+
+        world.set_component(
+          command.target,
+          :health,
+          World::Health.new(
+            current: current,
+            max: health.max
           )
         )
       end

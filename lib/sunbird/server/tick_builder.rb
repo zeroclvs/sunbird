@@ -10,8 +10,9 @@ module Sunbird
         [-1, 0].freeze
       ].freeze
 
-      def initialize(activation:)
+      def initialize(activation:, pathfinder: Pathfinder.new)
         @activation = activation
+        @pathfinder = pathfinder
       end
 
       def build(input:, level:, world:, player_instance:)
@@ -30,6 +31,7 @@ module Sunbird
               )
             else
               behavior_command(
+                level,
                 world,
                 instance_id
               )
@@ -61,7 +63,7 @@ module Sunbird
         )
       end
 
-      def behavior_command(world, instance_id)
+      def behavior_command(level, world, instance_id)
         behavior = world.component(
           instance_id,
           :behavior
@@ -75,7 +77,7 @@ module Sunbird
         when :wander
           wander_move(instance_id)
         when :chase
-          chase_move(world, instance_id)
+          chase_move(level, world, instance_id)
         else
           raise ArgumentError,
             "unknown behavior: #{behavior.kind.inspect}"
@@ -92,38 +94,48 @@ module Sunbird
         )
       end
 
-      def chase_move(world, instance_id)
+      def chase_move(level, world, instance_id)
         target_id = world.relation_targets(
           kind: :targets,
           source_id: instance_id
         ).first
         return unless target_id
 
-        position = world.component(
-          instance_id,
-          :position
-        )
-        target_position = world.component(
-          target_id,
-          :position
-        )
-        return unless position && target_position
-
-        dx = target_position.x <=> position.x
-
-        if dx.zero?
-          dy = target_position.y <=> position.y
-        else
-          dy = 0
+        if adjacent?(world, instance_id, target_id)
+          return Commands::Attack.new(
+            attacker: instance_id,
+            target: target_id,
+            damage: 1
+          )
         end
 
-        return if dx.zero? && dy.zero?
+        step = @pathfinder.next_step(
+          level: level,
+          world: world,
+          source_id: instance_id,
+          target_id: target_id
+        )
+        return unless step
+
+        dx, dy = step
 
         Commands::Move.new(
           instance: instance_id,
           dx: dx,
           dy: dy
         )
+      end
+
+      def adjacent?(world, source_id, target_id)
+        source = world.component(source_id, :position)
+        target = world.component(target_id, :position)
+        return false unless source && target
+
+        distance =
+          (source.x - target.x).abs +
+          (source.y - target.y).abs
+
+        distance == 1
       end
     end
   end
