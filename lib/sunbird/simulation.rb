@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
-    attr_reader :level, :tick_number, :controlled_id
+  class Simulation
+    attr_reader :level, :step_number, :controlled_id
 
     def initialize(
       level:,
@@ -11,7 +11,7 @@ module Sunbird
     )
       @level = level
       @world = World.new
-      @tick_number = 0
+      @step_number = 0
 
       movement = Movement.new
       @planner = Planner.new(
@@ -25,21 +25,23 @@ module Sunbird
       instantiate_relations(level.relations, spawn_ids)
     end
 
-    def tick(input:)
-      commands = @planner.build(
+    def plan(input:)
+      @planner.build(
         input: input,
         level: @level,
         world: @world.view,
         controlled_id: @controlled_id
       )
+    end
 
+    def step(commands:)
       @resolver.resolve(
         world: @world,
         level: @level,
         commands: commands
       )
 
-      @tick_number += 1
+      @step_number += 1
     end
 
     def world_view

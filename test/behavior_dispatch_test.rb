@@ -24,13 +24,13 @@ class BehaviorDispatchTest < Minitest::Test
       controlled_spawn: :hero
     )
 
-    server = Sunbird::Server.new(
+    simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog(goblin_behavior: :unknown)
     )
 
     error = assert_raises(ArgumentError) do
-      server.tick(input: Sunbird::Input::Snapshot.empty)
+      simulation.plan(input: Sunbird::Input::Snapshot.empty)
     end
 
     assert_equal "unknown behavior: :unknown", error.message

@@ -1,8 +1,8 @@
 # Sunbird
 
-Sunbird is an experimental tick-based RPG engine written in Ruby.
+Sunbird is an experimental game-runtime foundation written in Ruby.
 
-It explores a data-oriented, Quake-inspired simulation model built around authoritative server ticks, indexed runtime state, explicit commands, and a strict separation between authored level data and mutable world state.
+It explores a small data-oriented architecture for grid-based games while keeping simulation, gameplay policy, presentation, and platform I/O separate. The current demo is an ASCII exploration game, but v0.3 is intended to support both action/turn-driven JRPG experiments and fixed-step action games such as metroidvanias.
 
 **Current version:** `v0.3`
 
@@ -11,48 +11,51 @@ It explores a data-oriented, Quake-inspired simulation model built around author
 Sunbird currently includes:
 
 - integer runtime instance IDs and array-backed component storage;
-- reusable entity definitions and authored level spawns;
-- immutable `Level` data with terrain, spawn keys, and static relations;
-- mutable `World` state with components and runtime relations;
-- authoritative `Server#tick` simulation;
-- input snapshots and command-based state changes;
-- `Planner` + `Resolver` separation;
-- breadth-first grid pathfinding;
-- shared movement/traversability rules;
-- `Move` and `Attack` commands;
-- basic health damage resolution;
-- an ASCII renderer.
+- immutable `Level` data and mutable level-local `World` state;
+- authored spawn-key relations resolved to runtime instance relations;
+- explicit commands with authoritative resolution;
+- table-driven NPC behavior, BFS pathfinding, collision, movement, and attacks;
+- `ModeStack` with an action-driven exploration mode;
+- `Simulation#plan` separated from `Simulation#step`;
+- backend-neutral `Render::Scene` projection;
+- semantic render keys with ASCII fallback glyphs;
+- an ASCII renderer and terminal host boundary.
 
-The test level uses `P` for the controlled player and `G` for goblins. Goblins receive authored `:targets` relations, route around blocked terrain, and attack when adjacent.
+The current test level uses `P` for the controlled player and `G` for goblins. Goblins route around blocked terrain and attack when adjacent.
 
 ## Architecture
 
 ```text
-Entity::Catalog        Level
-      |             /    |     \
-      |        Terrain  Spawns  Relations
-      |             \    |     /
-      +-------------- load -----+
+                    App
+                     |
+                 ModeStack
+                     |
+                Active Mode
+                     |
+          decides when to advance
                      |
                      v
-                   World
-                     |
-                World::View
-                     |
-                     v
-Input::Snapshot -> Server#tick
-                     |
-                  Planner
-                     |
-              Commands::Buffer
-                     |
-                  Resolver
-                     |
-                     v
-                   World
+                Simulation
+               /          \
+          Planner        Resolver
+             |               |
+             v               v
+      Commands::Buffer ---> World
+                              |
+                         World::View
+                              |
+                              v
+                     Render::Projector
+                              |
+                              v
+                       Render::Scene
+                              |
+                        Render::Ascii
+                              |
+                       Host::Terminal
 ```
 
-`Level` is immutable authored area data. `World` is mutable runtime state. `Planner` derives intent from read-only state; `Resolver` authoritatively validates and applies it.
+A simulation **step is a state transition, not a clock tick**. The active mode decides when a step occurs. The current exploration mode advances after actionable input; a future metroidvania mode can drive the same simulation from a fixed-step clock.
 
 See [`docs/architecture.md`](docs/architecture.md) for details.
 
@@ -89,6 +92,4 @@ bundle exec ruby -Itest -e \
 
 ## Project status
 
-`v0.3` is primarily a structural release. It normalizes naming and ownership established during the 0.2 prototype rather than adding a large new gameplay system.
-
-Current limitations include uniform-cost pathfinding, no multi-agent path reservation, no death/removal system, no background scheduler, no compiled level format, ASCII-only presentation, no networking, and no multithreaded simulation.
+`v0.3` is a common foundation rather than a commitment to one game loop. ASCII remains the reference renderer. Kitty/Ghostty graphics, richer terminal input, presentation interpolation, JRPG battle/menu systems, and fixed-step action scheduling are intentionally deferred to later increments.

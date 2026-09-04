@@ -2,7 +2,11 @@
 
 module Sunbird
   class Level
-    Tile = Data.define(:glyph, :passable)
+    Tile = Data.define(
+      :render_key,
+      :glyph,
+      :passable
+    )
 
     Spawn = Data.define(
       :key,
@@ -63,6 +67,10 @@ module Sunbird
 
     def glyph_at(x, y)
       terrain.glyph_at(x, y)
+    end
+
+    def render_key_at(x, y)
+      terrain.render_key_at(x, y)
     end
 
     def passable?(x, y)

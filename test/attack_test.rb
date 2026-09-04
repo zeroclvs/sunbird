@@ -23,9 +23,9 @@ class AttackTest < Minitest::Test
       health: Sunbird::World::Health.new(current: 10, max: 10)
     )
 
-    commands = Sunbird::Server::Commands::Buffer.new(
+    commands = Sunbird::Simulation::Commands::Buffer.new(
       [
-        Sunbird::Server::Commands::Attack.new(
+        Sunbird::Simulation::Commands::Attack.new(
           attacker_id: attacker_id,
           target_id: target_id,
           damage: 1
@@ -33,7 +33,7 @@ class AttackTest < Minitest::Test
       ]
     )
 
-    Sunbird::Server::Resolver.new.resolve(
+    Sunbird::Simulation::Resolver.new.resolve(
       world: world,
       level: @level,
       commands: commands
@@ -52,9 +52,9 @@ class AttackTest < Minitest::Test
       health: Sunbird::World::Health.new(current: 10, max: 10)
     )
 
-    commands = Sunbird::Server::Commands::Buffer.new(
+    commands = Sunbird::Simulation::Commands::Buffer.new(
       [
-        Sunbird::Server::Commands::Attack.new(
+        Sunbird::Simulation::Commands::Attack.new(
           attacker_id: attacker_id,
           target_id: target_id,
           damage: 1
@@ -62,7 +62,7 @@ class AttackTest < Minitest::Test
       ]
     )
 
-    Sunbird::Server::Resolver.new.resolve(
+    Sunbird::Simulation::Resolver.new.resolve(
       world: world,
       level: @level,
       commands: commands

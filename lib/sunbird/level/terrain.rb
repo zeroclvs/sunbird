@@ -5,6 +5,7 @@ module Sunbird
     class Terrain
       DEFAULT_TILES = {
         " " => Tile.new(
+          render_key: :ground,
           glyph: " ",
           passable: true
         )
@@ -28,16 +29,22 @@ module Sunbird
           y.between?(0, height - 1)
       end
 
-      def glyph_at(x, y)
+      def tile_at(x, y)
         return unless inside?(x, y)
 
-        @rows[y][x]
+        @tiles.fetch(@rows[y][x])
+      end
+
+      def glyph_at(x, y)
+        tile_at(x, y)&.glyph
+      end
+
+      def render_key_at(x, y)
+        tile_at(x, y)&.render_key
       end
 
       def passable?(x, y)
-        return false unless inside?(x, y)
-
-        @tiles.fetch(glyph_at(x, y)).passable
+        tile_at(x, y)&.passable || false
       end
 
       private

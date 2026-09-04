@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
+  class Simulation
     class Planner
       WANDER_DIRECTIONS = [
         [0, -1].freeze,

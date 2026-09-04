@@ -1,28 +1,32 @@
 # Sunbird v0.3 Architecture
 
-Sunbird is an experimental tick-based RPG engine. The Ruby implementation is a rapid architecture prototype: the goal is to make simulation semantics explicit and portable rather than depend on Ruby-specific object patterns.
+Sunbird v0.3 is a small game-runtime foundation. It retains the useful parts of the earlier Quake-inspired prototype—explicit runtime state, command intent, authoritative resolution, and strict presentation separation—without making a global fixed tick the identity of the engine.
+
+The current Ruby program is a prototype for architecture and semantics, not a commitment to Ruby-specific object patterns.
 
 ## Vocabulary
 
-The main terms are intentionally narrow:
-
 | Term | Meaning |
 | --- | --- |
-| `App` | executable application shell connecting host input, server, and rendering |
-| `Server` | authoritative simulation owner |
+| `App` | executable shell connecting input, modes, rendering, and the host |
+| `ModeStack` | owns the active application/game mode |
+| `Mode` | decides how input/time advances gameplay |
+| `Simulation` | owns one loaded Level/World simulation and authoritative command application |
 | `Level` | immutable authored description of one playable area |
-| `Terrain` | spatial glyph/passability data inside a Level |
+| `Terrain` | spatial/passability data inside a Level |
 | `Entity` | reusable authored component recipe |
 | `Spawn` | Level instruction to instantiate an Entity |
 | `InstanceId` | integer identity of one runtime instance |
-| `World` | mutable runtime component and relation state |
-| `Planner` | derives commands from current read-only state |
+| `World` | mutable level-local component and runtime-relation state |
+| `Planner` | optional command producer that derives intent from read-only state |
 | `Resolver` | authoritatively validates and applies commands |
-| `Host` | platform-facing boundary such as terminal I/O |
+| `Scene` | backend-neutral presentation snapshot produced from Level + World::View |
+| `Renderer` | converts a Scene into presentation output |
+| `Host` | platform/terminal I/O and capability boundary |
 
 ## Repository structure
 
-The outer Ruby layout is conventional and deliberate:
+The outer Ruby layout remains conventional:
 
 ```text
 bin/sunbird          executable
@@ -30,30 +34,31 @@ lib/sunbird.rb       library entry point
 lib/sunbird/         implementation namespace
 ```
 
-Root domain types live directly under `lib/sunbird/`:
+The main runtime domains are:
 
 ```text
 lib/sunbird/
-  server.rb
+  app.rb
+  mode_stack.rb
+  mode/
+  simulation.rb
+  simulation/
   level.rb
+  level/
   world.rb
+  world/
   entity.rb
+  entity/
+  render/
+  host.rb
+  host/
 ```
 
-Supporting code is grouped below those roots:
-
-```text
-server/
-level/
-world/
-entity/
-```
-
-This avoids redundant paths such as `server/server.rb` and `world/world.rb` while keeping normal Ruby packaging conventions.
+`Simulation` replaces the earlier `Server` terminology. Networking is not part of the current runtime, and authority is expressed by the Resolver boundary rather than by a client/server name.
 
 ## Level and World
 
-`Level` and `World` have different lifetimes and responsibilities.
+`Level` and `World` intentionally have different lifetimes.
 
 ```text
              authored / immutable
@@ -72,35 +77,19 @@ This avoids redundant paths such as `server/server.rb` and `world/world.rb` whil
 
 ### Level
 
-A `Level` is the complete immutable authored area presented to the simulation. It owns:
+A `Level` owns:
 
 - a name;
 - `Terrain`;
 - keyed `Spawn` descriptions;
 - static authored relations;
-- the key of the currently controlled spawn.
+- the key of the currently controlled spawn used by the present exploration prototype.
 
-`Level::Terrain` owns only spatial terrain concerns:
-
-```text
-width
-height
-glyph lookup
-bounds
-passability
-```
-
-The `Level` delegates common spatial queries such as `passable?` and `glyph_at` to its terrain so callers do not need to know how terrain is stored.
+Terrain now carries a semantic `render_key` as well as the current ASCII glyph. Gameplay uses passability; presentation uses the render key. The glyph is fallback data for the ASCII renderer.
 
 ### World
 
-`World` is the mutable runtime state produced when a level is instantiated. It owns:
-
-- integer `InstanceId`s;
-- component tables;
-- runtime relations.
-
-Conceptually:
+`World` owns level-local mutable runtime state:
 
 ```text
 positions[instance_id]
@@ -110,131 +99,92 @@ behaviors[instance_id]
 collisions[instance_id]
 ```
 
-Runtime identity is the integer `InstanceId`. The `:entity_ref` component records which authored entity definition an instance came from; it is not the instance's identity.
+Runtime identity is the integer `InstanceId`. `EntityRef` records which authored Entity definition produced an instance.
 
-## Entities, spawns, and runtime instances
+`World` should not automatically become the complete saved-game state. A JRPG branch will likely need persistent session/party state that survives level and mode transitions.
 
-`Entity` is a reusable component recipe stored in `Entity::Catalog`.
+## Entities, spawns, and relations
 
-A level does not duplicate those components. It stores keyed spawns:
-
-```text
-Spawn(
-  key: :goblin_a,
-  entity: :goblin,
-  x: 35,
-  y: 3
-)
-```
-
-Loading creates runtime instances:
+`Entity::Catalog` stores reusable component recipes. Level spawns use stable authoring keys:
 
 ```text
-Entity(:goblin)
-      +
-Spawn(:goblin_a)
-      |
-      v
-InstanceId 1
-      |
-      +-- EntityRef(:goblin)
-      +-- Position(...)
-      +-- Health(...)
-      +-- Behavior(...)
-      +-- Collision(...)
+Spawn(key: :goblin_a, entity: :goblin, x: 35, y: 3)
 ```
 
-Spawn keys are authoring identifiers. They are resolved to integer InstanceIds when the server instantiates the level.
-
-## Static and runtime relations
-
-Relations exist in two forms.
-
-Authored level relations reference spawn keys:
+Static relations also use spawn keys:
 
 ```text
 targets(:goblin_a, :player)
 ```
 
-During level instantiation the server resolves those keys:
+Simulation instantiation resolves them to runtime InstanceIds and stores runtime relations in World. Simulation contains no special rule such as “goblins target the player.”
+
+## Simulation is not a clock
+
+The earlier architecture centered on `Server#tick`. v0.3 replaces that with two operations:
 
 ```text
-:player    -> InstanceId 0
-:goblin_a  -> InstanceId 1
+Simulation#plan(input:)
+Simulation#step(commands:)
 ```
 
-and stores a runtime world relation:
+`plan` reads Level + `World::View` through Planner and returns `Commands::Buffer`. It does not mutate the World.
 
-```text
-targets(1, 0)
-```
-
-This keeps content authoring stable while runtime systems operate only on integer instance IDs.
-
-The server does not contain special rules such as "all goblins target the player." Those relationships are authored in the level.
-
-## Controlled instance
-
-The current prototype has one input-controlled instance.
-
-Rather than searching for an entity named `:player`, the level names a `controlled_spawn` key. The server resolves that spawn key to `controlled_id` when loading the level.
-
-This keeps the server generic with respect to entity names while preserving the simple single-controller model needed by the prototype.
-
-## World::View
-
-Planning code reads runtime state through `World::View`.
-
-The view exposes:
-
-```text
-instance?
-instance_ids
-component
-relation_targets
-```
-
-but not mutation operations such as `set_component` or `add_relation`.
-
-This is the main read/write authority boundary inside the simulation.
-
-## Authoritative tick
-
-A tick is an operation, not a stored Tick object.
+`step` consumes explicit commands, asks Resolver to validate/apply them, and increments `step_number`.
 
 ```text
 Input::Snapshot
       |
       v
-Server#tick
+    Planner             another future producer
+      |                         |
+      v                         v
+Commands::Buffer <--------------+
       |
-      +--> Planner
-      |       |
-      |       +--> Relevance
-      |       +--> Level
-      |       +--> World::View
-      |       +--> runtime relations
-      |       +--> behavior
-      |       +--> Pathfinder
-      |       |
-      |       v
-      |   Commands::Buffer
+      v
+Simulation#step
       |
-      +--> Resolver
-      |       |
-      |       v
-      |     World
+      v
+   Resolver
       |
-      +--> increment tick number
+      v
+    World
 ```
 
-`Server#tick` remains intentionally small.
+Planner is therefore a command producer, not a mandatory universal engine loop. Battle logic, scripts, cutscenes, tests, or networking can later produce commands through another boundary.
+
+A **step** means one authoritative state transition. It says nothing about wall-clock cadence.
+
+## Modes own advancement policy
+
+`App` owns a `ModeStack`. The active mode decides when gameplay advances.
+
+The current `Mode::Exploration` is action-driven:
+
+```text
+physical input
+     |
+Input::Mapper
+     |
+Input::Snapshot
+     |
+ExplorationMode
+     |
+     +--> quit? -> return to App
+     |
+     +--> Simulation#plan
+              |
+              v
+        Simulation#step
+```
+
+This preserves the current JRPG-like behavior: standing still does not automatically advance the simulation.
+
+A future metroidvania mode can instead call simulation steps from a fixed-step scheduler. A battle mode can advance on turns or another battle-specific policy. The common Simulation layer does not choose between those policies.
 
 ## Planner
 
-`Planner` replaces the older `TickBuilder` name. It does not construct a Tick object; it plans commands for the current tick.
-
-Its inputs are:
+Planner reads:
 
 ```text
 Input::Snapshot
@@ -245,145 +195,107 @@ Relevance
 Pathfinder
 ```
 
-It produces `Commands::Buffer`.
+and produces commands.
 
-Behavior dispatch is table-driven and keyed by `behavior.kind`. The current table maps `:idle`, `:wander`, and `:chase` to private Planner handlers; individual handlers may consult relations, pathfinding, or other read-only inputs as needed. This creates a small dispatch seam that can later be extracted or populated by a scripting/content layer without making that layer part of v0.3.
+Behavior dispatch is table-driven through `BEHAVIOR_HANDLERS`, keyed by `behavior.kind`. Relations are data consumed by handlers, not another dispatch mechanism.
 
-Player control and NPC behavior both end in the same command pipeline.
+The current behavior kinds are `:idle`, `:wander`, and `:chase`.
 
-## Relevance
+## Relevance, movement, and pathfinding
 
-`Server::Relevance` replaces the older `Activation` name.
+`Simulation::Relevance` currently selects every runtime instance for planning. It remains a policy seam for later visibility/sleep/spatial selection.
 
-Its purpose is to answer which runtime instances matter to the current planning pass. The v0.3 policy still returns every instance.
-
-The boundary exists so future spatial/visibility/sleep policies can be introduced without changing `Server#tick` or `Planner` ownership.
-
-## Movement
-
-`Server::Movement` contains the shared definition of whether a cell is currently traversable:
+`Simulation::Movement` is the shared definition of traversability:
 
 ```text
-Level terrain passability
-        +
+terrain passability
+       +
 blocking runtime Collision components
-        =
+       =
 traversable cell
 ```
 
-Both Pathfinder and Resolver use this rule.
+Both Pathfinder and Resolver use it. Resolver still rechecks the rule against current mutable state and therefore remains authoritative.
 
-This removes the v0.2 duplication where pathfinding and authoritative movement resolution independently implemented blocking checks.
+`Simulation::Pathfinder` uses breadth-first search because current movement costs are uniform. There is no multi-agent reservation yet.
 
-Sharing the rule does not make Pathfinder authoritative. Planner sees a snapshot; Resolver checks the same rule again against the current mutable World when applying the command.
+## Commands and Resolver
 
-## Pathfinder
-
-The current terrain has uniform movement cost, so `Server::Pathfinder` uses breadth-first search.
-
-For chase behavior it:
-
-1. reads source and target positions;
-2. finds traversable cells adjacent to the target;
-3. searches for a shortest route to one of them;
-4. returns only the next cardinal step.
-
-```text
-Level
-  +
-World::View
-  +
-Movement
-  |
-  v
-Pathfinder
-  |
-  v
-next (dx, dy)
-```
-
-There is no multi-agent path reservation. Multiple instances may plan the same destination from the same pre-resolution snapshot; sequential Resolver order decides which movement actually succeeds.
-
-## Commands
-
-Commands represent intent rather than mutation.
-
-Current command types are:
+Current commands are:
 
 ```text
 Move(instance_id, dx, dy)
 Attack(attacker_id, target_id, damage)
 ```
 
-`Commands::Buffer` groups the commands planned for one tick.
+Resolver is the sole mutation/legality boundary for those commands. Movement is rechecked for current traversability. Attack adjacency is rechecked before damage is applied.
 
-## Resolver
-
-`Resolver` is the authoritative command application boundary.
-
-### Move
-
-A move is applied only if the destination is still traversable when the command is resolved.
-
-### Attack
-
-Planner may emit an attack when two instances appear adjacent. Resolver checks adjacency again before applying damage.
-
-This fixes an authority hole from v0.2d where a target could theoretically move away earlier in the same tick while a previously planned attack still landed.
-
-The rule remains:
+The stable rule is:
 
 ```text
-Planner = proposed intent
-Resolver = authoritative legality + mutation
+command producer = proposed intent
+Resolver         = authoritative legality + mutation
 ```
 
-## Input boundary
+## Render::Scene
 
-Physical terminal input remains outside simulation authority:
+The old renderer pipeline collapsed Level/World directly into an ASCII `Frame(lines)`. v0.3 replaces that with a backend-neutral Scene:
 
 ```text
-TerminalInput
-      |
-      v
-Input::Mapper
-      |
-      v
-Action
-      |
-      v
-Input::Handoff
-      |
-      v
-Input::Snapshot
-      |
-      v
-Server#tick
+Level + World::View
+        |
+        v
+Render::Projector
+        |
+        v
+Render::Scene
+   |        |
+ tiles   instances
+            |
+       stable InstanceId
+            |
+       render_key
+       position
+       layer
+       fallback glyph
 ```
 
-The renamed `Host::TerminalInput` is a platform adapter, not a simulation listener.
+Scene instance entries retain stable runtime IDs. This is intentional groundwork for future interpolation between presentation snapshots.
 
-## Rendering
-
-Rendering remains outside the server simulation:
+The current Scene also carries `fallback_glyph` so the ASCII renderer remains simple and output-compatible. The semantic `render_key` is the identity a graphical renderer should use.
 
 ```text
-Server.level + Server.world_view
-              |
-              v
-       Render::Projector
-              |
-              v
-         Render::Frame
-              |
-              v
-         Render::Ascii
-              |
-              v
-        Host::Terminal
+Render::Scene
+      |
+      +--> Render::Ascii   (current reference backend)
+      |
+      +--> Render::Kitty   (future)
+      |
+      +--> other renderer  (future)
 ```
 
-Rendering never mutates World.
+ASCII should remain a useful fallback/reference renderer even after terminal graphics exist.
+
+## Host boundary
+
+Rendering and Host responsibilities are separate.
+
+Renderer decides **how a Scene is encoded for presentation**. Host owns **platform transport and input**.
+
+Current terminal host:
+
+```text
+Host::Terminal
+  |- terminal output/lifecycle
+  |- input adapter
+  `- Capabilities
+       |- graphics_protocol
+       `- keyboard_protocol
+```
+
+The current capabilities report no graphics protocol and legacy keyboard decoding. No Ghostty/Kitty probing is implemented in v0.3.
+
+Future capability detection should detect protocols rather than terminal brand. A Kitty graphics renderer and Kitty keyboard decoder can therefore work across compatible terminals rather than being tied to Ghostty by name.
 
 ## Content boundary
 
@@ -394,47 +306,26 @@ content/entities/
 content/levels/
 ```
 
-They are temporary source representations behind loaders. `content/` is deliberately separate from `lib/` because it represents game content rather than engine implementation. `Entity::Loader` and `Level::Loader` share the temporary Ruby source-file validation and constant-name convention through `Content::RubySource`.
+`Entity::Loader` and `Level::Loader` share temporary Ruby source-file validation and constant-name derivation through `Content::RubySource`.
 
-The current Ruby constant-loading mechanism is scaffolding, not the intended long-term persistence format.
+The Ruby constant-based content representation is scaffolding, not the intended long-term persistence/asset format.
 
-## v0.3 scope
+## v0.3 foundation
 
-Version 0.3 is primarily a structural normalization release. Its important changes are:
+The final v0.3 foundation intentionally establishes these boundaries before choosing a game direction:
 
-- `server/server.rb` -> `server.rb`;
-- `world/world.rb` -> `world.rb`;
-- `TickBuilder` -> `Planner`;
-- `Activation` -> `Relevance`;
-- `Entity::Registry` -> `Entity::Catalog`;
-- `World::Identity` -> `World::EntityRef`;
-- `RuntimeRelations` -> `Relations`;
-- `Level::Map` -> `Level::Terrain`;
-- removal of `Level::Loaded`;
-- `Level` becomes the complete authored area object;
-- static relations move into Level data;
-- server no longer hardcodes goblin/player relation setup;
-- pathfinding and Resolver share movement rules;
-- attack legality is rechecked authoritatively;
-- `CommandBuffer` becomes `Commands::Buffer`;
-- `TerminalListener` -> `TerminalInput`;
-- `content/entities/core.rb` -> `actors.rb`.
+- `Server` -> `Simulation`;
+- `tick` -> cadence-neutral `step`;
+- planning separated from command application (`plan` vs `step`);
+- App-level `ModeStack` and action-driven `Exploration` mode;
+- Level remains immutable authored area data;
+- World remains level-local mutable runtime state;
+- explicit command/Resolver authority remains intact;
+- semantic render keys are added to terrain and renderable components;
+- ASCII-specific `Render::Frame` is replaced by `Render::Scene`;
+- Scene entries retain stable runtime instance IDs;
+- Host owns terminal I/O/capabilities while Renderer owns presentation encoding;
+- ASCII remains the reference/fallback renderer;
+- no Kitty graphics, Kitty keyboard protocol, fixed-step scheduler, interpolation, battle system, or persistent party/session model is implemented yet.
 
-## Deferred systems
-
-Sunbird still deliberately does not implement:
-
-- weighted navigation or A*;
-- path caching/navigation meshes;
-- crowd reservation/coordination;
-- death/removal lifecycle;
-- inventory/equipment;
-- selective relevance/sleep policies;
-- wall-clock simulation pacing;
-- background scheduling;
-- compiled binary level/content data;
-- graphical rendering;
-- networking;
-- multithreaded simulation.
-
-Those remain later design problems rather than hidden complexity inside the v0.3 cleanup.
+This lets later branches choose different advancement policies without forking the underlying Level/World/command/render boundaries.

@@ -7,8 +7,8 @@ class PathfindingChaseTest < Minitest::Test
 
   def test_chaser_routes_around_blocked_terrain
     tiles = {
-      " " => Sunbird::Level::Tile.new(glyph: " ", passable: true),
-      "~" => Sunbird::Level::Tile.new(glyph: "~", passable: false)
+      " " => Sunbird::Level::Tile.new(render_key: :ground, glyph: " ", passable: true),
+      "~" => Sunbird::Level::Tile.new(render_key: :water, glyph: "~", passable: false)
     }.freeze
 
     terrain = Sunbird::Level::Terrain.new(
@@ -51,15 +51,15 @@ class PathfindingChaseTest < Minitest::Test
       controlled_spawn: :hero
     )
 
-    server = Sunbird::Server.new(
+    simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog
     )
-    goblin_id = instance_id_for(server, :goblin)
+    goblin_id = instance_id_for(simulation, :goblin)
 
-    server.tick(input: Sunbird::Input::Snapshot.empty)
+    advance_simulation(simulation, Sunbird::Input::Snapshot.empty)
 
-    position = server.world_view.component(goblin_id, :position)
+    position = simulation.world_view.component(goblin_id, :position)
 
     assert_equal [2, 3], [position.x, position.y]
   end

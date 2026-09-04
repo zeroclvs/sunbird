@@ -72,9 +72,14 @@ module SunbirdTestSupport
     )
   end
 
-  def instance_id_for(server, entity_name)
-    server.world_view.instance_ids.find do |instance_id|
-      ref = server.world_view.component(instance_id, :entity_ref)
+  def advance_simulation(simulation, input)
+    commands = simulation.plan(input: input)
+    simulation.step(commands: commands)
+  end
+
+  def instance_id_for(simulation, entity_name)
+    simulation.world_view.instance_ids.find do |instance_id|
+      ref = simulation.world_view.component(instance_id, :entity_ref)
       ref&.name == entity_name
     end
   end

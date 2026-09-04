@@ -5,8 +5,8 @@ require_relative "test_helper"
 class PathfinderTest < Minitest::Test
   def test_finds_step_around_blocked_terrain
     tiles = {
-      " " => Sunbird::Level::Tile.new(glyph: " ", passable: true),
-      "~" => Sunbird::Level::Tile.new(glyph: "~", passable: false)
+      " " => Sunbird::Level::Tile.new(render_key: :ground, glyph: " ", passable: true),
+      "~" => Sunbird::Level::Tile.new(render_key: :water, glyph: "~", passable: false)
     }.freeze
 
     terrain = Sunbird::Level::Terrain.new(
@@ -38,7 +38,7 @@ class PathfinderTest < Minitest::Test
       collision: Sunbird::World::Collision.new(blocks_movement: true)
     )
 
-    step = Sunbird::Server::Pathfinder.new.next_step(
+    step = Sunbird::Simulation::Pathfinder.new.next_step(
       level: level,
       world: world.view,
       source_id: source_id,
@@ -67,7 +67,7 @@ class PathfinderTest < Minitest::Test
       collision: Sunbird::World::Collision.new(blocks_movement: true)
     )
 
-    step = Sunbird::Server::Pathfinder.new.next_step(
+    step = Sunbird::Simulation::Pathfinder.new.next_step(
       level: level,
       world: world.view,
       source_id: source_id,

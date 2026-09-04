@@ -29,6 +29,8 @@ class LevelLoadingTest < Minitest::Test
   end
 
   def test_terrain_controls_static_passability
+    assert_equal :ground, @level.render_key_at(3, 3)
+    assert_equal :grass, @level.render_key_at(7, 1)
     assert @level.passable?(3, 3)
     assert @level.passable?(7, 1)
     refute @level.passable?(27, 1)

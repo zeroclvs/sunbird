@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
+  class Simulation
     class Movement
       def traversable?(level:, world:, x:, y:, except_id: nil)
         return false unless level.passable?(x, y)

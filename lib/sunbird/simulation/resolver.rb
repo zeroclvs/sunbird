@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
+  class Simulation
     class Resolver
       def initialize(movement: Movement.new)
         @movement = movement

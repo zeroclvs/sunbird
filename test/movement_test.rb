@@ -18,7 +18,7 @@ class MovementTest < Minitest::Test
       collision: Sunbird::World::Collision.new(blocks_movement: true)
     )
 
-    movement = Sunbird::Server::Movement.new
+    movement = Sunbird::Simulation::Movement.new
 
     refute movement.traversable?(
       level: level,

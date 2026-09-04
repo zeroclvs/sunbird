@@ -12,6 +12,7 @@ class EntityLoadingTest < Minitest::Test
     assert_instance_of Sunbird::Entity::Catalog, entities
     assert_equal :goblin, goblin.name
     assert_equal :chase, goblin.components.fetch(:behavior).kind
+    assert_equal :goblin, goblin.components.fetch(:renderable).render_key
     assert_equal "G", goblin.components.fetch(:renderable).glyph
   end
 end

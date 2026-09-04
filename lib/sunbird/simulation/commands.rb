@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
+  class Simulation
     module Commands
       Move = Data.define(
         :instance_id,

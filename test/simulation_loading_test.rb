@@ -2,7 +2,7 @@
 
 require_relative "test_helper"
 
-class ServerLoadingTest < Minitest::Test
+class SimulationLoadingTest < Minitest::Test
   include SunbirdTestSupport
 
   def setup
@@ -31,15 +31,15 @@ class ServerLoadingTest < Minitest::Test
       controlled_spawn: :hero
     )
 
-    @server = Sunbird::Server.new(
+    @simulation = Sunbird::Simulation.new(
       level: @level,
       entities: actor_catalog
     )
   end
 
   def test_controlled_instance_comes_from_level_spawn_key
-    ref = @server.world_view.component(
-      @server.controlled_id,
+    ref = @simulation.world_view.component(
+      @simulation.controlled_id,
       :entity_ref
     )
 
@@ -47,11 +47,11 @@ class ServerLoadingTest < Minitest::Test
   end
 
   def test_static_level_relation_becomes_runtime_relation
-    goblin_id = instance_id_for(@server, :goblin)
+    goblin_id = instance_id_for(@simulation, :goblin)
 
     assert_equal(
-      [@server.controlled_id],
-      @server.world_view.relation_targets(
+      [@simulation.controlled_id],
+      @simulation.world_view.relation_targets(
         kind: :targets,
         source_id: goblin_id
       )

@@ -7,8 +7,19 @@ module Sunbird
       HIDE_CURSOR = "\e[?25l"
       SHOW_CURSOR = "\e[?25h"
 
-      def initialize(output: $stdout)
+      attr_reader :capabilities
+
+      def initialize(input: $stdin, output: $stdout, input_adapter: nil)
         @output = output
+        @input_adapter = input_adapter || TerminalInput.new(input: input)
+        @capabilities = Capabilities.new(
+          graphics_protocol: nil,
+          keyboard_protocol: :legacy
+        )
+      end
+
+      def read_event
+        @input_adapter.read_event
       end
 
       def clear

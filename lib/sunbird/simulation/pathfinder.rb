@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
+  class Simulation
     class Pathfinder
       DIRECTIONS = [
         [0, -1].freeze,

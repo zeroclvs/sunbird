@@ -24,15 +24,15 @@ class CollisionTest < Minitest::Test
       controlled_spawn: :hero
     )
 
-    server = Sunbird::Server.new(
+    simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog(goblin_behavior: :idle)
     )
 
-    server.tick(input: move_input(:move_east))
+    advance_simulation(simulation, move_input(:move_east))
 
-    position = server.world_view.component(
-      server.controlled_id,
+    position = simulation.world_view.component(
+      simulation.controlled_id,
       :position
     )
 

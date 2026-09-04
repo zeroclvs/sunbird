@@ -8,22 +8,27 @@ module Sunbird
 
         tiles: {
           " " => Tile.new(
+            render_key: :ground,
             glyph: " ",
             passable: true
           ),
           '"' => Tile.new(
+            render_key: :grass,
             glyph: '"',
             passable: true
           ),
           "~" => Tile.new(
+            render_key: :water,
             glyph: "~",
             passable: false
           ),
           "|" => Tile.new(
+            render_key: :wall,
             glyph: "|",
             passable: false
           ),
           "_" => Tile.new(
+            render_key: :wall,
             glyph: "_",
             passable: false
           )

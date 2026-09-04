@@ -8,7 +8,7 @@ class RelevanceTest < Minitest::Test
     first = world.spawn
     second = world.spawn
 
-    relevant = Sunbird::Server::Relevance.new.relevant_instances(
+    relevant = Sunbird::Simulation::Relevance.new.relevant_instances(
       level: nil,
       world: world.view
     )
