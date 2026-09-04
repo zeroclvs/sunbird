@@ -3,101 +3,64 @@
 require_relative "test_helper"
 
 class PathfindingChaseTest < Minitest::Test
-  def test_goblin_routes_around_water_to_reach_player
+  include SunbirdTestSupport
+
+  def test_chaser_routes_around_blocked_terrain
     tiles = {
-      " " => Sunbird::Level::Tile.new(
-        glyph: " ",
-        passable: true
-      ),
-      "~" => Sunbird::Level::Tile.new(
-        glyph: "~",
-        passable: false
-      )
+      " " => Sunbird::Level::Tile.new(render_key: :ground, glyph: " ", passable: true),
+      "~" => Sunbird::Level::Tile.new(render_key: :water, glyph: "~", passable: false)
     }.freeze
 
-    level = Sunbird::Level::Map.new(
+    terrain = Sunbird::Level::Terrain.new(
       rows: [
         "       ",
+        "       ",
+        "       ",
         "   ~   ",
-        "   ~   ",
-        "   ~   ",
+        "       ",
+        "       ",
         "       "
       ],
       tiles: tiles
     )
 
-    player = Sunbird::Entity.new(
-      name: :player,
-      components: {
-        collision: Sunbird::World::Collision.new(
-          blocks_movement: true
-        )
-      }.freeze
-    )
-
-    goblin = Sunbird::Entity.new(
-      name: :goblin,
-      components: {
-        behavior: Sunbird::World::Behavior.new(
-          kind: :chase
+    level = Sunbird::Level.new(
+      name: :test,
+      terrain: terrain,
+      spawns: [
+        Sunbird::Level::Spawn.new(
+          key: :hero,
+          entity: :player,
+          x: 5,
+          y: 3
         ),
-        collision: Sunbird::World::Collision.new(
-          blocks_movement: true
+        Sunbird::Level::Spawn.new(
+          key: :hunter,
+          entity: :goblin,
+          x: 1,
+          y: 3
         )
-      }.freeze
+      ],
+      relations: [
+        Sunbird::Level::Relation.new(
+          kind: :targets,
+          source: :hunter,
+          target: :hero
+        )
+      ],
+      controlled_spawn: :hero
     )
 
-    entities = Sunbird::Entity::Registry.new(
-      [player, goblin]
-    )
-
-    spawns = [
-      Sunbird::Level::Spawn.new(
-        entity: :player,
-        x: 5,
-        y: 2
-      ),
-      Sunbird::Level::Spawn.new(
-        entity: :goblin,
-        x: 2,
-        y: 2
-      )
-    ]
-
-    server = Sunbird::Server.new(
+    simulation = Sunbird::Simulation.new(
       level: level,
-      spawns: spawns,
-      entities: entities
+      entities: actor_catalog
     )
+    goblin_id = instance_id_for(simulation, :goblin)
 
-    goblin_id = server.world_view.instance_ids.find do |instance_id|
-      identity = server.world_view.component(
-        instance_id,
-        :identity
-      )
+    advance_simulation(simulation, Sunbird::Input::Snapshot.empty)
 
-      identity.entity == :goblin
-    end
+    position = simulation.world_view.component(goblin_id, :position)
 
-    8.times do
-      server.tick(
-        input: Sunbird::Input::Snapshot.empty
-      )
-    end
-
-    goblin_position = server.world_view.component(
-      goblin_id,
-      :position
-    )
-    player_position = server.world_view.component(
-      server.player_instance,
-      :position
-    )
-
-    distance =
-      (goblin_position.x - player_position.x).abs +
-      (goblin_position.y - player_position.y).abs
-
-    assert_equal 1, distance
+    assert_equal [2, 3], [position.x, position.y]
   end
 end

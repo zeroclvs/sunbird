@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
+  class Simulation
     class Pathfinder
       DIRECTIONS = [
         [0, -1].freeze,
@@ -10,58 +10,60 @@ module Sunbird
         [-1, 0].freeze
       ].freeze
 
+      def initialize(movement: Movement.new)
+        @movement = movement
+      end
+
       def next_step(level:, world:, source_id:, target_id:)
         source = world.component(source_id, :position)
         target = world.component(target_id, :position)
         return unless source && target
 
         start = [source.x, source.y].freeze
-        blocked = blocking_positions(world, except: source_id)
-        goals = adjacent_goals(level, target, blocked, start)
+        goals = adjacent_goals(
+          level: level,
+          world: world,
+          source_id: source_id,
+          target: target
+        )
         return if goals.empty? || goals.key?(start)
 
         first_step = search(
           level: level,
+          world: world,
+          source_id: source_id,
           start: start,
           target: target,
-          goals: goals,
-          blocked: blocked
+          goals: goals
         )
         return unless first_step
 
-        [first_step[0] - source.x, first_step[1] - source.y]
+        [
+          first_step[0] - source.x,
+          first_step[1] - source.y
+        ]
       end
 
       private
 
-      def adjacent_goals(level, target, blocked, start)
+      def adjacent_goals(level:, world:, source_id:, target:)
         DIRECTIONS.each_with_object({}) do |(dx, dy), goals|
           x = target.x + dx
           y = target.y + dy
-          position = [x, y].freeze
 
-          next unless level.passable?(x, y)
-          next if blocked.key?(position) && position != start
+          next unless @movement.traversable?(
+            level: level,
+            world: world,
+            x: x,
+            y: y,
+            except_id: source_id
+          )
 
-          goals[position] = true
+          goals[[x, y].freeze] = true
         end
       end
 
-      def blocking_positions(world, except:)
-        world.instance_ids.each_with_object({}) do |instance_id, blocked|
-          next if instance_id == except
-
-          collision = world.component(instance_id, :collision)
-          next unless collision&.blocks_movement
-
-          position = world.component(instance_id, :position)
-          next unless position
-
-          blocked[[position.x, position.y].freeze] = true
-        end
-      end
-
-      def search(level:, start:, target:, goals:, blocked:)
+      def search(level:, world:, source_id:, start:, target:, goals:)
         queue = [start]
         head = 0
         parents = { start => nil }
@@ -76,8 +78,13 @@ module Sunbird
             neighbor = [current[0] + dx, current[1] + dy].freeze
 
             next if parents.key?(neighbor)
-            next unless level.passable?(neighbor[0], neighbor[1])
-            next if blocked.key?(neighbor)
+            next unless @movement.traversable?(
+              level: level,
+              world: world,
+              x: neighbor[0],
+              y: neighbor[1],
+              except_id: source_id
+            )
 
             parents[neighbor] = current
             queue << neighbor

@@ -5,7 +5,7 @@ module Sunbird
     def initialize
       @next_instance_id = 0
       @component_tables = {}
-      @relations = RuntimeRelations.new
+      @relations = Relations.new
     end
 
     def spawn(**components)

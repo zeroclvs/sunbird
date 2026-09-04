@@ -2,8 +2,8 @@
 
 module Sunbird
   class Entity
-    module Sources
-      Core = [
+    module Definitions
+      Actors = [
         Entity.new(
           name: :player,
           components: {
@@ -12,6 +12,7 @@ module Sunbird
               max: 10
             ),
             renderable: World::Renderable.new(
+              render_key: :player,
               glyph: "P",
               layer: 10
             ),
@@ -29,6 +30,7 @@ module Sunbird
               max: 4
             ),
             renderable: World::Renderable.new(
+              render_key: :goblin,
               glyph: "G",
               layer: 10
             ),

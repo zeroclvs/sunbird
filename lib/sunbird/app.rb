@@ -3,7 +3,7 @@
 module Sunbird
   class App
     ENTITY_PATH = File.expand_path(
-      "../../content/entities/core.rb",
+      "../../content/entities/actors.rb",
       __dir__
     )
 
@@ -14,15 +14,19 @@ module Sunbird
 
     def initialize
       entities = Entity::Loader.load(ENTITY_PATH)
-      loaded_level = Level::Loader.load(
+      level = Level::Loader.load(
         LEVEL_PATH,
         entities: entities
       )
 
-      @server = Server.new(
-        level: loaded_level.map,
-        spawns: loaded_level.spawns,
+      simulation = Simulation.new(
+        level: level,
         entities: entities
+      )
+
+      @modes = ModeStack.new
+      @modes.push(
+        Mode::Exploration.new(simulation: simulation)
       )
 
       @mapper = Input::Mapper.new
@@ -30,21 +34,18 @@ module Sunbird
 
       @projector = Render::Projector.new
       @renderer = Render::Ascii.new
-      @terminal = Host::Terminal.new
-      @listener = Host::TerminalListener.new
+      @host = Host::Terminal.new
     end
 
     def run
-      @terminal.hide_cursor
+      @host.hide_cursor
 
       loop do
         draw
 
-        physical_event = @listener.read_event
+        physical_event = @host.read_event
         action = @mapper.map(physical_event)
-
         next unless action
-        break if action.kind == :quit
 
         @handoff.push(action)
         @handoff.flip!
@@ -53,26 +54,27 @@ module Sunbird
           @handoff.take_completed
         )
 
-        @server.tick(input: snapshot)
+        result = @modes.current.advance(input: snapshot)
+        break if result == :quit
       end
     ensure
-      @terminal.show_cursor
-      @terminal.clear
+      @host.show_cursor
+      @host.clear
     end
 
     private
 
     def draw
-      frame = @projector.project(
-        level: @server.level,
-        world: @server.world_view
+      mode = @modes.current
+      scene = @projector.project(
+        level: mode.level,
+        world: mode.world_view
       )
 
-      @terminal.clear
-      @terminal.write(@renderer.render(frame))
-      @terminal.write(
-        "\n\nWASD or arrow keys to move. Q to quit. " \
-        "Tick #{@server.tick_number}\n"
+      @host.clear
+      @host.write(@renderer.render(scene))
+      @host.write(
+        "\n\nWASD or arrow keys to move. Q to quit. "         "Step #{mode.step_number}\n"
       )
     end
   end

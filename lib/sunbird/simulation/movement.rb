@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+module Sunbird
+  class Simulation
+    class Movement
+      def traversable?(level:, world:, x:, y:, except_id: nil)
+        return false unless level.passable?(x, y)
+
+        !occupied?(
+          world: world,
+          x: x,
+          y: y,
+          except_id: except_id
+        )
+      end
+
+      def occupied?(world:, x:, y:, except_id: nil)
+        world.instance_ids.any? do |instance_id|
+          next false if instance_id == except_id
+
+          collision = world.component(instance_id, :collision)
+          next false unless collision&.blocks_movement
+
+          position = world.component(instance_id, :position)
+          next false unless position
+
+          position.x == x && position.y == y
+        end
+      end
+    end
+  end
+end

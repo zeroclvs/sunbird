@@ -1,50 +1,61 @@
 # Sunbird
 
-Sunbird is an experimental tick-based RPG engine written in Ruby.
+Sunbird is an experimental game-runtime foundation written in Ruby.
 
-It explores a data-oriented, Quake-inspired simulation model built around authoritative server ticks, indexed runtime state, explicit commands, and a clean separation between immutable level data and mutable world state.
+It explores a small data-oriented architecture for grid-based games while keeping simulation, gameplay policy, presentation, and platform I/O separate. The current demo is an ASCII exploration game, but v0.3 is intended to support both action/turn-driven JRPG experiments and fixed-step action games such as metroidvanias.
 
-**Current version:** `v0.2d`
+**Current version:** `v0.3`
 
 ## Current state
 
 Sunbird currently includes:
 
 - integer runtime instance IDs and array-backed component storage;
-- reusable entity definitions and level spawns;
-- authoritative `Server#tick` simulation;
-- input snapshots and command-based state changes;
-- runtime entity relations;
-- terrain and entity collision;
-- wandering and relation-driven chase behavior;
-- breadth-first grid pathfinding around terrain and blocking entities;
-- `Move` and `Attack` commands;
-- basic health damage resolution;
-- a simple ASCII renderer.
+- immutable `Level` data and mutable level-local `World` state;
+- authored spawn-key relations resolved to runtime instance relations;
+- explicit commands with authoritative resolution;
+- table-driven NPC behavior, BFS pathfinding, collision, movement, and attacks;
+- `ModeStack` with an action-driven exploration mode;
+- `Simulation#plan` separated from `Simulation#step`;
+- backend-neutral `Render::Scene` projection;
+- semantic render keys with ASCII fallback glyphs;
+- an ASCII renderer and terminal host boundary.
 
-The current test level uses `P` for the player and `G` for goblins. Goblins target the player, find a shortest route around obstacles, stop adjacent to the target, and attack.
+The current test level uses `P` for the controlled player and `G` for goblins. Goblins route around blocked terrain and attack when adjacent.
 
 ## Architecture
 
 ```text
-Input::Snapshot
-      ↓
-Server#tick
-      ↓
-TickBuilder
-  ├── Activation
-  ├── relations
-  ├── behavior
-  └── Pathfinder
-      ↓
-CommandBuffer
-      ↓
-Resolver
-      ↓
-World
+                    App
+                     |
+                 ModeStack
+                     |
+                Active Mode
+                     |
+          decides when to advance
+                     |
+                     v
+                Simulation
+               /          \
+          Planner        Resolver
+             |               |
+             v               v
+      Commands::Buffer ---> World
+                              |
+                         World::View
+                              |
+                              v
+                     Render::Projector
+                              |
+                              v
+                       Render::Scene
+                              |
+                        Render::Ascii
+                              |
+                       Host::Terminal
 ```
 
-`TickBuilder` plans intent from read-only state. `Resolver` remains authoritative: it re-checks movement legality and applies world mutations.
+A simulation **step is a state transition, not a clock tick**. The active mode decides when a step occurs. The current exploration mode advances after actionable input; a future metroidvania mode can drive the same simulation from a fixed-step clock.
 
 See [`docs/architecture.md`](docs/architecture.md) for details.
 
@@ -81,8 +92,4 @@ bundle exec ruby -Itest -e \
 
 ## Project status
 
-`v0.2d` is the final milestone in the 0.2 branch. Sunbird remains an architecture and gameplay prototype.
-
-Pathfinding currently assumes uniform movement cost and there is no multi-agent path reservation, death/removal system, background scheduler, binary level format, graphical renderer, networking, or multithreaded simulation.
-
-The next branch (`v0.3`) is intended to clean up project structure and terminology before the simulation grows further.
+`v0.3` is a common foundation rather than a commitment to one game loop. ASCII remains the reference renderer. Kitty/Ghostty graphics, richer terminal input, presentation interpolation, JRPG battle/menu systems, and fixed-step action scheduling are intentionally deferred to later increments.

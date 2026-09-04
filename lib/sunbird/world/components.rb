@@ -2,10 +2,14 @@
 
 module Sunbird
   class World
-    Identity = Data.define(:entity)
+    EntityRef = Data.define(:name)
     Position = Data.define(:x, :y)
     Health = Data.define(:current, :max)
-    Renderable = Data.define(:glyph, :layer)
+    Renderable = Data.define(
+      :render_key,
+      :glyph,
+      :layer
+    )
     Behavior = Data.define(:kind)
     Collision = Data.define(:blocks_movement)
   end

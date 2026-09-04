@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
-    class TickBuilder
+  class Simulation
+    class Planner
       WANDER_DIRECTIONS = [
         [0, -1].freeze,
         [1, 0].freeze,
@@ -10,42 +10,42 @@ module Sunbird
         [-1, 0].freeze
       ].freeze
 
-      def initialize(activation:, pathfinder: Pathfinder.new)
-        @activation = activation
+      BEHAVIOR_HANDLERS = {
+        idle: :idle_behavior,
+        wander: :wander_behavior,
+        chase: :chase
+      }.freeze
+
+      def initialize(relevance:, pathfinder: Pathfinder.new)
+        @relevance = relevance
         @pathfinder = pathfinder
       end
 
-      def build(input:, level:, world:, player_instance:)
-        active_instances = @activation.active_instances(
+      def build(input:, level:, world:, controlled_id:)
+        relevant_instances = @relevance.relevant_instances(
           level: level,
           world: world
         )
 
         commands = []
-        active_instances.each do |instance_id|
+
+        relevant_instances.each do |instance_id|
           command =
-            if instance_id == player_instance
-              player_move(
-                input,
-                player_instance
-              )
+            if instance_id == controlled_id
+              controlled_move(input, controlled_id)
             else
-              behavior_command(
-                level,
-                world,
-                instance_id
-              )
+              behavior_command(level, world, instance_id)
             end
 
           commands << command if command
         end
 
-        CommandBuffer.new(commands)
+        Commands::Buffer.new(commands)
       end
 
       private
 
-      def player_move(input, player_instance)
+      def controlled_move(input, instance_id)
         dx = 0
         dy = 0
 
@@ -57,44 +57,43 @@ module Sunbird
         return if dx.zero? && dy.zero?
 
         Commands::Move.new(
-          instance: player_instance,
+          instance_id: instance_id,
           dx: dx,
           dy: dy
         )
       end
 
       def behavior_command(level, world, instance_id)
-        behavior = world.component(
-          instance_id,
-          :behavior
-        )
-
+        behavior = world.component(instance_id, :behavior)
         return unless behavior
 
-        case behavior.kind
-        when :idle
-          nil
-        when :wander
-          wander_move(instance_id)
-        when :chase
-          chase_move(level, world, instance_id)
-        else
+        handler = BEHAVIOR_HANDLERS.fetch(behavior.kind) do
           raise ArgumentError,
             "unknown behavior: #{behavior.kind.inspect}"
         end
+
+        __send__(handler, level, world, instance_id)
+      end
+
+      def idle_behavior(_level, _world, _instance_id)
+        nil
+      end
+
+      def wander_behavior(_level, _world, instance_id)
+        wander_move(instance_id)
       end
 
       def wander_move(instance_id)
         dx, dy = WANDER_DIRECTIONS.sample
 
         Commands::Move.new(
-          instance: instance_id,
+          instance_id: instance_id,
           dx: dx,
           dy: dy
         )
       end
 
-      def chase_move(level, world, instance_id)
+      def chase(level, world, instance_id)
         target_id = world.relation_targets(
           kind: :targets,
           source_id: instance_id
@@ -103,8 +102,8 @@ module Sunbird
 
         if adjacent?(world, instance_id, target_id)
           return Commands::Attack.new(
-            attacker: instance_id,
-            target: target_id,
+            attacker_id: instance_id,
+            target_id: target_id,
             damage: 1
           )
         end
@@ -120,7 +119,7 @@ module Sunbird
         dx, dy = step
 
         Commands::Move.new(
-          instance: instance_id,
+          instance_id: instance_id,
           dx: dx,
           dy: dy
         )
@@ -131,11 +130,8 @@ module Sunbird
         target = world.component(target_id, :position)
         return false unless source && target
 
-        distance =
-          (source.x - target.x).abs +
-          (source.y - target.y).abs
-
-        distance == 1
+        (source.x - target.x).abs +
+          (source.y - target.y).abs == 1
       end
     end
   end

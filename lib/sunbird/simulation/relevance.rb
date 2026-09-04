@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Sunbird
-  class Server
-    class Activation
-      def active_instances(level:, world:)
+  class Simulation
+    class Relevance
+      def relevant_instances(level:, world:)
         world.instance_ids
       end
     end

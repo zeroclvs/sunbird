@@ -2,10 +2,10 @@
 
 require_relative "test_helper"
 
-class CollisionTest < Minitest::Test
+class BehaviorDispatchTest < Minitest::Test
   include SunbirdTestSupport
 
-  def test_blocking_instance_prevents_controlled_movement
+  def test_unknown_behavior_kind_raises_argument_error
     level = level_with(
       spawns: [
         Sunbird::Level::Spawn.new(
@@ -15,9 +15,9 @@ class CollisionTest < Minitest::Test
           y: 2
         ),
         Sunbird::Level::Spawn.new(
-          key: :blocker,
+          key: :stranger,
           entity: :goblin,
-          x: 3,
+          x: 4,
           y: 2
         )
       ],
@@ -26,16 +26,13 @@ class CollisionTest < Minitest::Test
 
     simulation = Sunbird::Simulation.new(
       level: level,
-      entities: actor_catalog(goblin_behavior: :idle)
+      entities: actor_catalog(goblin_behavior: :unknown)
     )
 
-    advance_simulation(simulation, move_input(:move_east))
+    error = assert_raises(ArgumentError) do
+      simulation.plan(input: Sunbird::Input::Snapshot.empty)
+    end
 
-    position = simulation.world_view.component(
-      simulation.controlled_id,
-      :position
-    )
-
-    assert_equal [2, 2], [position.x, position.y]
+    assert_equal "unknown behavior: :unknown", error.message
   end
 end

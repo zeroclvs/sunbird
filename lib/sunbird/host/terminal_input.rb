@@ -4,7 +4,7 @@ require "io/console"
 
 module Sunbird
   module Host
-    class TerminalListener
+    class TerminalInput
       ARROW_KEYS = {
         "\e[A" => :up,
         "\e[B" => :down,
@@ -34,9 +34,7 @@ module Sunbird
 
         return LETTER_KEYS[first] unless first == "\e"
 
-        sequence =
-          first + @input.getch + @input.getch
-
+        sequence = first + @input.getch + @input.getch
         ARROW_KEYS[sequence]
       end
     end

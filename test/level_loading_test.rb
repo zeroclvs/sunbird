@@ -6,36 +6,35 @@ class LevelLoadingTest < Minitest::Test
   include SunbirdTestPaths
 
   def setup
-    @entities = Sunbird::Entity::Loader.load(
-      ENTITY_PATH
-    )
-
-    @loaded = Sunbird::Level::Loader.load(
+    entities = Sunbird::Entity::Loader.load(ENTITY_PATH)
+    @level = Sunbird::Level::Loader.load(
       LEVEL_PATH,
-      entities: @entities
+      entities: entities
     )
   end
 
-  def test_source_level_loads_map_and_spawns
-    assert_equal 44, @loaded.map.width
-    assert_equal 14, @loaded.map.height
-    assert_equal 4, @loaded.spawns.length
-
-    player = @loaded.spawns.find do |spawn|
-      spawn.entity == :player
-    end
-
-    refute_nil player
-    assert_equal [3, 3], [player.x, player.y]
+  def test_loader_returns_complete_level
+    assert_instance_of Sunbird::Level, @level
+    assert_instance_of Sunbird::Level::Terrain, @level.terrain
+    assert_equal :test_field, @level.name
+    assert_equal 44, @level.width
+    assert_equal 14, @level.height
+    assert_equal 4, @level.spawns.length
   end
 
-  def test_landscape_controls_static_passability
-    map = @loaded.map
+  def test_level_owns_control_and_static_relations
+    assert_equal :player, @level.controlled_spawn
+    assert_equal 3, @level.relations.length
+    assert @level.relations.all? { |relation| relation.kind == :targets }
+  end
 
-    assert map.passable?(3, 3)
-    assert map.passable?(7, 1)
-    refute map.passable?(27, 1)
-    refute map.passable?(0, 5)
-    refute map.passable?(12, 0)
+  def test_terrain_controls_static_passability
+    assert_equal :ground, @level.render_key_at(3, 3)
+    assert_equal :grass, @level.render_key_at(7, 1)
+    assert @level.passable?(3, 3)
+    assert @level.passable?(7, 1)
+    refute @level.passable?(27, 1)
+    refute @level.passable?(0, 5)
+    refute @level.passable?(12, 0)
   end
 end
