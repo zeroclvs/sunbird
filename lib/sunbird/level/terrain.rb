@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Sunbird
-  module Level
-    class Map
+  class Level
+    class Terrain
       DEFAULT_TILES = {
         " " => Tile.new(
           glyph: " ",
@@ -73,7 +73,7 @@ module Sunbird
         unless width.positive? &&
                frozen_rows.all? { |row| row.length == width }
           raise ArgumentError,
-            "all map rows must have the same non-zero width"
+            "all terrain rows must have the same non-zero width"
         end
 
         frozen_tiles = tiles.dup.freeze

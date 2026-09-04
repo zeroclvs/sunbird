@@ -3,20 +3,17 @@
 module Sunbird
   class Server
     class Resolver
+      def initialize(movement: Movement.new)
+        @movement = movement
+      end
+
       def resolve(world:, level:, commands:)
         commands.each do |command|
           case command
           in Commands::Move
-            resolve_move(
-              world,
-              level,
-              command
-            )
+            resolve_move(world, level, command)
           in Commands::Attack
-            resolve_attack(
-              world,
-              command
-            )
+            resolve_attack(world, command)
           else
             raise ArgumentError,
               "unsupported command: #{command.inspect}"
@@ -27,29 +24,24 @@ module Sunbird
       private
 
       def resolve_move(world, level, command)
-        position = world.component(
-          command.instance,
-          :position
-        )
+        return unless world.instance?(command.instance_id)
+
+        position = world.component(command.instance_id, :position)
         return unless position
 
         next_x = position.x + command.dx
         next_y = position.y + command.dy
 
-        return unless level.passable?(
-          next_x,
-          next_y
-        )
-
-        return if occupied?(
-          world,
-          next_x,
-          next_y,
-          except: command.instance
+        return unless @movement.traversable?(
+          level: level,
+          world: world,
+          x: next_x,
+          y: next_y,
+          except_id: command.instance_id
         )
 
         world.set_component(
-          command.instance,
+          command.instance_id,
           :position,
           World::Position.new(
             x: next_x,
@@ -58,18 +50,16 @@ module Sunbird
         )
       end
 
-
       def resolve_attack(world, command)
-        health = world.component(
-          command.target,
-          :health
-        )
+        return unless valid_attack?(world, command)
+
+        health = world.component(command.target_id, :health)
         return unless health
 
         current = [health.current - command.damage, 0].max
 
         world.set_component(
-          command.target,
+          command.target_id,
           :health,
           World::Health.new(
             current: current,
@@ -78,30 +68,17 @@ module Sunbird
         )
       end
 
-      def occupied?(world, x, y, except:)
-        world.instance_ids.any? do |instance_id|
-          next false if instance_id == except
+      def valid_attack?(world, command)
+        return false unless command.damage.positive?
+        return false unless world.instance?(command.attacker_id)
+        return false unless world.instance?(command.target_id)
 
-          collision = world.component(
-            instance_id,
-            :collision
-          )
+        attacker = world.component(command.attacker_id, :position)
+        target = world.component(command.target_id, :position)
+        return false unless attacker && target
 
-          next false unless (
-            collision &&
-            collision.blocks_movement
-          )
-
-          position = world.component(
-            instance_id,
-            :position
-          )
-
-          next false unless position
-
-          position.x == x &&
-            position.y == y
-        end
+        (attacker.x - target.x).abs +
+          (attacker.y - target.y).abs == 1
       end
     end
   end

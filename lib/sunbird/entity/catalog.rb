@@ -2,7 +2,7 @@
 
 module Sunbird
   class Entity
-    class Registry
+    class Catalog
       def initialize(entities)
         @entities = entities.to_h do |entity|
           [entity.name, entity]
@@ -22,7 +22,7 @@ module Sunbird
       end
     end
 
-    module Sources
+    module Definitions
     end
   end
 end

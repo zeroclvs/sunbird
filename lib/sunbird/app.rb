@@ -3,7 +3,7 @@
 module Sunbird
   class App
     ENTITY_PATH = File.expand_path(
-      "../../content/entities/core.rb",
+      "../../content/entities/actors.rb",
       __dir__
     )
 
@@ -14,14 +14,13 @@ module Sunbird
 
     def initialize
       entities = Entity::Loader.load(ENTITY_PATH)
-      loaded_level = Level::Loader.load(
+      level = Level::Loader.load(
         LEVEL_PATH,
         entities: entities
       )
 
       @server = Server.new(
-        level: loaded_level.map,
-        spawns: loaded_level.spawns,
+        level: level,
         entities: entities
       )
 
@@ -31,7 +30,7 @@ module Sunbird
       @projector = Render::Projector.new
       @renderer = Render::Ascii.new
       @terminal = Host::Terminal.new
-      @listener = Host::TerminalListener.new
+      @terminal_input = Host::TerminalInput.new
     end
 
     def run
@@ -40,7 +39,7 @@ module Sunbird
       loop do
         draw
 
-        physical_event = @listener.read_event
+        physical_event = @terminal_input.read_event
         action = @mapper.map(physical_event)
 
         next unless action

@@ -2,8 +2,8 @@
 
 module Sunbird
   class Entity
-    module Sources
-      Core = [
+    module Definitions
+      Actors = [
         Entity.new(
           name: :player,
           components: {

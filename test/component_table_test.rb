@@ -5,10 +5,7 @@ require_relative "test_helper"
 class ComponentTableTest < Minitest::Test
   def test_values_are_indexed_by_instance_id
     table = Sunbird::World::ComponentTable.new
-    position = Sunbird::World::Position.new(
-      x: 2,
-      y: 3
-    )
+    position = Sunbird::World::Position.new(x: 2, y: 3)
 
     table[7] = position
 

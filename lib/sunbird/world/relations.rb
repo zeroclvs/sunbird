@@ -8,7 +8,7 @@ module Sunbird
       :target_id
     )
 
-    class RuntimeRelations
+    class Relations
       def initialize
         @relations = []
       end

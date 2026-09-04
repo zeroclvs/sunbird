@@ -15,10 +15,10 @@ module Sunbird
 
         require absolute_path
 
-        source_name = constant_name_for(absolute_path)
-        source = Sources.const_get(source_name, false)
+        definition_name = constant_name_for(absolute_path)
+        definitions = Definitions.const_get(definition_name, false)
 
-        Registry.new(source)
+        Catalog.new(definitions)
       end
 
       def constant_name_for(path)
