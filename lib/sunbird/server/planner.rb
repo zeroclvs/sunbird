@@ -10,6 +10,12 @@ module Sunbird
         [-1, 0].freeze
       ].freeze
 
+      BEHAVIOR_HANDLERS = {
+        idle: :idle_behavior,
+        wander: :wander_behavior,
+        chase: :chase
+      }.freeze
+
       def initialize(relevance:, pathfinder: Pathfinder.new)
         @relevance = relevance
         @pathfinder = pathfinder
@@ -61,17 +67,20 @@ module Sunbird
         behavior = world.component(instance_id, :behavior)
         return unless behavior
 
-        case behavior.kind
-        when :idle
-          nil
-        when :wander
-          wander_move(instance_id)
-        when :chase
-          chase(level, world, instance_id)
-        else
+        handler = BEHAVIOR_HANDLERS.fetch(behavior.kind) do
           raise ArgumentError,
             "unknown behavior: #{behavior.kind.inspect}"
         end
+
+        __send__(handler, level, world, instance_id)
+      end
+
+      def idle_behavior(_level, _world, _instance_id)
+        nil
+      end
+
+      def wander_behavior(_level, _world, instance_id)
+        wander_move(instance_id)
       end
 
       def wander_move(instance_id)

@@ -2,6 +2,8 @@
 
 require_relative "sunbird/version"
 
+require_relative "sunbird/content/ruby_source"
+
 require_relative "sunbird/world/components"
 require_relative "sunbird/world/component_table"
 require_relative "sunbird/world/relations"

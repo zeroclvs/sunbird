@@ -247,13 +247,7 @@ Pathfinder
 
 It produces `Commands::Buffer`.
 
-The current behavior kinds are:
-
-```text
-:idle
-:wander
-:chase
-```
+Behavior dispatch is table-driven and keyed by `behavior.kind`. The current table maps `:idle`, `:wander`, and `:chase` to private Planner handlers; individual handlers may consult relations, pathfinding, or other read-only inputs as needed. This creates a small dispatch seam that can later be extracted or populated by a scripting/content layer without making that layer part of v0.3.
 
 Player control and NPC behavior both end in the same command pipeline.
 
@@ -400,7 +394,7 @@ content/entities/
 content/levels/
 ```
 
-They are temporary source representations behind loaders. `content/` is deliberately separate from `lib/` because it represents game content rather than engine implementation.
+They are temporary source representations behind loaders. `content/` is deliberately separate from `lib/` because it represents game content rather than engine implementation. `Entity::Loader` and `Level::Loader` share the temporary Ruby source-file validation and constant-name convention through `Content::RubySource`.
 
 The current Ruby constant-loading mechanism is scaffolding, not the intended long-term persistence format.
 
