@@ -16,7 +16,6 @@ class AssetCatalogTest < Minitest::Test
         path: path
       )
       catalog = Sunbird::Render::AssetCatalog.new([asset])
-
       assert_equal asset, catalog.fetch(:hero)
       assert_equal path, catalog[:hero].path
       refute_respond_to catalog[:hero], :image_id
@@ -34,7 +33,6 @@ class AssetCatalogTest < Minitest::Test
         ]
       )
     end
-
     assert_match "missing render asset", error.message
   end
 
@@ -53,7 +51,6 @@ class AssetCatalogTest < Minitest::Test
           ]
         )
       end
-
       assert_match "invalid PNG render asset", error.message
     end
   end
@@ -63,7 +60,7 @@ class DefaultAssetCatalogTest < Minitest::Test
   def test_default_catalog_covers_current_scene_keys
     catalog = Sunbird::Render::AssetCatalog.default
 
-    %i[ground grass water wall player goblin].each do |render_key|
+    %i[ground grass water wall player goblin villager].each do |render_key|
       assert File.file?(catalog.fetch(render_key).path)
     end
   end

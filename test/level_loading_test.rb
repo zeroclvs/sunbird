@@ -19,7 +19,7 @@ class LevelLoadingTest < Minitest::Test
     assert_equal :test_field, @level.name
     assert_equal 44, @level.width
     assert_equal 14, @level.height
-    assert_equal 4, @level.spawns.length
+    assert_equal 5, @level.spawns.length
   end
 
   def test_level_owns_entry_spawn_and_static_relations
