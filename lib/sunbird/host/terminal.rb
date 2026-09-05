@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "io/console"
+
 module Sunbird
   module Host
     class Terminal
@@ -20,9 +22,13 @@ module Sunbird
         input_adapter: nil,
         env: ENV
       )
+        @input = input
         @output = output
+        @manage_input_mode = input_adapter.nil?
         @input_adapter = input_adapter || TerminalInput.new(input: input)
         @capabilities = TerminalCapabilities.detect(env: env)
+        @saved_console_mode = nil
+        @application_active = false
       end
 
       def read_event
@@ -30,6 +36,10 @@ module Sunbird
       end
 
       def enter_application
+        return if @application_active
+
+        enter_raw_input
+        @application_active = true
         write(
           ENTER_ALT_SCREEN +
           CLEAR_SCREEN +
@@ -38,10 +48,17 @@ module Sunbird
       end
 
       def leave_application
-        write(
-          SHOW_CURSOR +
-          EXIT_ALT_SCREEN
-        )
+        return unless @application_active
+
+        begin
+          write(
+            SHOW_CURSOR +
+            EXIT_ALT_SCREEN
+          )
+        ensure
+          restore_input_mode
+          @application_active = false
+        end
       end
 
       def begin_synchronized_update
@@ -67,6 +84,31 @@ module Sunbird
       def write(text)
         @output.write(text)
         @output.flush
+      end
+
+      private
+
+      def enter_raw_input
+        return unless @manage_input_mode
+        return unless console_input?
+
+        @saved_console_mode = @input.console_mode
+        @input.raw!(min: 1, time: 0)
+      end
+
+      def restore_input_mode
+        return unless @saved_console_mode
+
+        @input.console_mode = @saved_console_mode
+        @saved_console_mode = nil
+      end
+
+      def console_input?
+        return false if @input.respond_to?(:tty?) && !@input.tty?
+
+        @input.respond_to?(:console_mode) &&
+          @input.respond_to?(:raw!) &&
+          @input.respond_to?(:console_mode=)
       end
     end
   end

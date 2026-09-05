@@ -4,7 +4,7 @@ Sunbird is an experimental game-runtime foundation written in Ruby.
 
 It explores a small data-oriented architecture for grid-based games while keeping simulation, gameplay policy, presentation, and platform I/O separate. The current demo is an action-driven exploration game that can render as plain ASCII or as PNG tiles/sprites through the Kitty graphics protocol.
 
-**Current version:** `v0.3a`
+**Current version:** `v0.3b`
 
 ## Current state
 
@@ -21,7 +21,8 @@ Sunbird currently includes:
 - semantic render keys with ASCII fallback glyphs;
 - an ASCII renderer;
 - a Kitty graphics renderer using PNG assets;
-- automatic Kitty/ASCII renderer selection at the terminal boundary.
+- automatic Kitty/ASCII renderer selection at the terminal boundary;
+- persistent raw terminal input with safe WASD, arrows, Escape, Q, and Ctrl-C handling.
 
 The current test level uses the same simulation in both renderers. Goblins route around blocked terrain and attack when adjacent.
 
@@ -115,7 +116,7 @@ W / ↑    move north
 S / ↓    move south
 A / ←    move west
 D / →    move east
-Q        quit
+Q / Esc  quit
 ```
 
 ## Tests
@@ -127,4 +128,4 @@ bundle exec ruby -Itest -e \
 
 ## Project status
 
-`v0.3a` is the first graphical-terminal milestone. It keeps the v0.3 runtime foundation intact while adding a small renderer-facing asset layer and a Kitty protocol backend with persistent placements, synchronized redraws, and alternate-screen lifecycle. Kitty keyboard input, animation/interpolation, JRPG battle/menu systems, persistent party state, and fixed-step action scheduling remain later work.
+`v0.3b` keeps the graphical-terminal milestone intact and makes the remaining terminal input path deliberately small and robust before the planned Raylib transition. It keeps the v0.3 runtime foundation intact while adding a small renderer-facing asset layer and a Kitty protocol backend with persistent placements, synchronized redraws, and alternate-screen lifecycle. Enhanced Kitty press/release event handling is deliberately not implemented; Raylib is expected to provide the richer input model in v0.4. Animation/interpolation, JRPG battle/menu systems, persistent party state, and fixed-step action scheduling remain later work.

@@ -1,6 +1,6 @@
-# Sunbird v0.3a Architecture
+# Sunbird v0.3b Architecture
 
-Sunbird v0.3a is a small game-runtime foundation with two presentation backends: ASCII and Kitty terminal graphics. It retains explicit runtime state, command intent, authoritative resolution, mode-owned advancement policy, and strict presentation separation.
+Sunbird v0.3b is a small game-runtime foundation with two presentation backends: ASCII and Kitty terminal graphics. It retains explicit runtime state, command intent, authoritative resolution, mode-owned advancement policy, and strict presentation separation.
 
 The Ruby program remains an architecture prototype rather than a commitment to Ruby-specific object patterns.
 
@@ -212,14 +212,14 @@ Renderer = how Scene becomes presentation
 Host     = how output/input reaches the terminal
 ```
 
-`Host::TerminalCapabilities` currently performs conservative Kitty environment detection using Kitty's terminal environment (`KITTY_WINDOW_ID` or a Kitty `TERM` value). It reports:
+`Host::TerminalCapabilities` continues to perform conservative Kitty environment detection using Kitty's terminal environment (`KITTY_WINDOW_ID` or a Kitty `TERM` value). It reports:
 
 ```text
 graphics_protocol: :kitty | nil
 keyboard_protocol: :legacy
 ```
 
-The keyboard path is deliberately unchanged in v0.3a.
+Terminal input remains deliberately protocol-light in v0.3b. `Host::Terminal` owns raw mode for the entire application session and restores the previous console mode on exit. `TerminalInput` decodes ordinary WASD/Q input plus legacy CSI/SS3 arrow sequences, treats a standalone Escape as an event using a short continuation timeout, and maps raw Ctrl-C to quit. Sunbird does not enable Kitty's enhanced press/repeat/release keyboard reporting in this branch; that richer physical-input model is deferred to the Raylib host planned for v0.4.
 
 The environment variable `SUNBIRD_RENDERER` can override renderer selection:
 
@@ -237,10 +237,14 @@ Authored Ruby content remains under `content/entities/` and `content/levels/`. `
 
 The Ruby content representation is scaffolding, not the intended long-term persistence format.
 
-## v0.3a scope
+## v0.3b scope
 
-v0.3a deliberately adds only the first graphical presentation path:
+v0.3b preserves the v0.3a graphical presentation path and adds only a minimal terminal-input cleanup:
 
+- persistent raw terminal mode owned by `Host::Terminal`;
+- safe standalone Escape handling and variable-length legacy arrow decoding;
+- Q/Escape/Ctrl-C quit handling;
+- no enhanced Kitty keyboard event framework;
 - conservative Kitty graphics capability detection;
 - automatic ASCII/Kitty renderer selection;
 - renderer override through `SUNBIRD_RENDERER`;
@@ -255,7 +259,7 @@ v0.3a deliberately adds only the first graphical presentation path:
 
 Explicitly deferred:
 
-- Kitty keyboard protocol;
+- enhanced Kitty press/repeat/release keyboard protocol;
 - active graphics-protocol query for unknown terminals;
 - sprite animation;
 - interpolation or independent presentation cadence;

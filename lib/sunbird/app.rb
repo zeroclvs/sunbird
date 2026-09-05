@@ -88,7 +88,7 @@ module Sunbird
     end
 
     def status_text(mode)
-      "WASD or arrow keys to move. Q to quit. " \
+      "WASD or arrow keys to move. Q or Esc to quit. " \
         "Step #{mode.step_number}"
     end
 

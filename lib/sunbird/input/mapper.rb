@@ -12,7 +12,8 @@ module Sunbird
         left: :move_west,
         d: :move_east,
         right: :move_east,
-        q: :quit
+        q: :quit,
+        escape: :quit
       }.freeze
 
       def map(physical_event)
