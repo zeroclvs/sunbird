@@ -18,7 +18,6 @@ module Sunbird
         LEVEL_PATH,
         entities: entities
       )
-
       @session = Session.new(
         party: Party.new(
           members: [:hero, :mage],
@@ -39,12 +38,10 @@ module Sunbird
 
       @mapper = Input::Mapper.new
       @handoff = Input::Handoff.new
-
       @projector = Render::Projector.new
       @host = Host::Terminal.new(env: env)
       @renderer = Render::Selector.build(
-        capabilities: @host.capabilities,
-        env: env
+        capabilities: @host.capabilities
       )
     end
 
@@ -57,9 +54,9 @@ module Sunbird
         physical_event = @host.read_event
         action = @mapper.map(physical_event)
         next unless action
+
         @handoff.push(action)
         @handoff.flip!
-
         snapshot = Input::Snapshot.from(
           @handoff.take_completed
         )
@@ -80,7 +77,6 @@ module Sunbird
         level: mode.level,
         world: mode.world_view
       )
-
       synchronized = @renderer.synchronized_updates?
       @host.begin_synchronized_update if synchronized
 
