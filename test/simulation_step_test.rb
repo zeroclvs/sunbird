@@ -15,20 +15,21 @@ class SimulationStepTest < Minitest::Test
           y: 2
         )
       ],
-      controlled_spawn: :hero
+      entry_spawn: :hero
     )
 
     @simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog
     )
+    @hero_id = @simulation.instance_id_for_spawn(:hero)
   end
 
   def test_step_applies_explicit_commands
     commands = Sunbird::Simulation::Commands::Buffer.new(
       [
         Sunbird::Simulation::Commands::Move.new(
-          instance_id: @simulation.controlled_id,
+          instance_id: @hero_id,
           dx: 1,
           dy: 0
         )
@@ -37,7 +38,7 @@ class SimulationStepTest < Minitest::Test
 
     result = @simulation.step(commands: commands)
     position = @simulation.world_view.component(
-      @simulation.controlled_id,
+      @hero_id,
       :position
     )
 
@@ -47,9 +48,12 @@ class SimulationStepTest < Minitest::Test
   end
 
   def test_plan_does_not_advance_world
-    commands = @simulation.plan(input: move_input(:move_east))
+    commands = @simulation.plan(
+      input: move_input(:move_east),
+      controlled_id: @hero_id
+    )
     position = @simulation.world_view.component(
-      @simulation.controlled_id,
+      @hero_id,
       :position
     )
 

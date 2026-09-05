@@ -12,6 +12,7 @@ Sunbird currently includes:
 
 - integer runtime instance IDs and array-backed component storage;
 - immutable `Level` data and mutable level-local `World` state;
+- persistent `Session` state with a party roster and stable party-member identities;
 - authored spawn-key relations resolved to runtime instance relations;
 - explicit commands with authoritative resolution;
 - table-driven NPC behavior, BFS pathfinding, collision, movement, and attacks;
@@ -61,6 +62,8 @@ The explicit `kitty` override is useful when testing another terminal that imple
 ```text
                     App
                      |
+                  Session
+                     |
                  ModeStack
                      |
                 Active Mode
@@ -89,7 +92,7 @@ The explicit `kitty` override is useful when testing another terminal that imple
                         Host::Terminal
 ```
 
-A simulation **step is a state transition, not a clock tick**. The active mode decides when a step occurs. Rendering remains independent of simulation authority.
+A simulation **step is a state transition, not a clock tick**. The active mode decides when a step occurs. `Session` owns persistent party identity above the level-local Simulation/World, and Exploration binds the current party leader to the Level entry spawn. Rendering remains independent of simulation authority.
 
 See [`docs/architecture.md`](docs/architecture.md) for details.
 
@@ -128,4 +131,4 @@ bundle exec ruby -Itest -e \
 
 ## Project status
 
-`v0.3b` keeps the graphical-terminal milestone intact and makes the remaining terminal input path deliberately small and robust before the planned Raylib transition. It keeps the v0.3 runtime foundation intact while adding a small renderer-facing asset layer and a Kitty protocol backend with persistent placements, synchronized redraws, and alternate-screen lifecycle. Enhanced Kitty press/release event handling is deliberately not implemented; Raylib is expected to provide the richer input model in v0.4. Animation/interpolation, JRPG battle/menu systems, persistent party state, and fixed-step action scheduling remain later work.
+`v0.3b` keeps the graphical-terminal milestone intact, keeps terminal input deliberately small before the planned Raylib transition, and introduces the first persistent JRPG-facing state above the level-local simulation: `Session` owns a `Party`, while `Mode::Exploration` binds the party leader to the current Level entry spawn. Enhanced Kitty press/release event handling is deliberately not implemented; Raylib is expected to provide the richer input model in v0.4. Animation/interpolation, persistent actor stats (HP/MP/equipment), JRPG battle/menu/dialogue systems, save data, and fixed-step action scheduling remain later work.

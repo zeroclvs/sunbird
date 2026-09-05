@@ -27,7 +27,7 @@ module Sunbird
       :rows,
       :spawns,
       :relations,
-      :controlled_spawn
+      :entry_spawn
     )
 
     module Definitions
@@ -37,20 +37,20 @@ module Sunbird
       :terrain,
       :spawns,
       :relations,
-      :controlled_spawn
+      :entry_spawn
 
     def initialize(
       name:,
       terrain:,
       spawns:,
       relations:,
-      controlled_spawn:
+      entry_spawn:
     )
       @name = name
       @terrain = terrain
       @spawns = spawns.dup.freeze
       @relations = relations.dup.freeze
-      @controlled_spawn = controlled_spawn
+      @entry_spawn = entry_spawn
     end
 
     def width

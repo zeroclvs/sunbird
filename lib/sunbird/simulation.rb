@@ -2,7 +2,7 @@
 
 module Sunbird
   class Simulation
-    attr_reader :level, :step_number, :controlled_id
+    attr_reader :level, :step_number
 
     def initialize(
       level:,
@@ -19,18 +19,16 @@ module Sunbird
         pathfinder: Pathfinder.new(movement: movement)
       )
       @resolver = Resolver.new(movement: movement)
-
-      spawn_ids = instantiate_spawns(level.spawns, entities)
-      @controlled_id = spawn_ids.fetch(level.controlled_spawn)
-      instantiate_relations(level.relations, spawn_ids)
+      @spawn_ids = instantiate_spawns(level.spawns, entities).freeze
+      instantiate_relations(level.relations, @spawn_ids)
     end
 
-    def plan(input:)
+    def plan(input:, controlled_id:)
       @planner.build(
         input: input,
         level: @level,
         world: @world.view,
-        controlled_id: @controlled_id
+        controlled_id: controlled_id
       )
     end
 
@@ -40,12 +38,15 @@ module Sunbird
         level: @level,
         commands: commands
       )
-
       @step_number += 1
     end
 
     def world_view
       @world.view
+    end
+
+    def instance_id_for_spawn(spawn_key)
+      @spawn_ids.fetch(spawn_key)
     end
 
     private

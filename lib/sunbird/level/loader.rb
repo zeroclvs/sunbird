@@ -27,8 +27,8 @@ module Sunbird
         )
 
         validate_spawns!(terrain, definition.spawns, entities)
-        validate_controlled_spawn!(
-          definition.controlled_spawn,
+        validate_entry_spawn!(
+          definition.entry_spawn,
           definition.spawns
         )
         validate_relations!(
@@ -41,7 +41,7 @@ module Sunbird
           terrain: terrain,
           spawns: definition.spawns,
           relations: definition.relations,
-          controlled_spawn: definition.controlled_spawn
+          entry_spawn: definition.entry_spawn
         )
       end
 
@@ -72,13 +72,14 @@ module Sunbird
       end
       private_class_method :validate_spawns!
 
-      def validate_controlled_spawn!(controlled_spawn, spawns)
-        return if spawns.any? { |spawn| spawn.key == controlled_spawn }
+      def validate_entry_spawn!(entry_spawn, spawns)
+        return if entry_spawn.nil?
+        return if spawns.any? { |spawn| spawn.key == entry_spawn }
 
         raise ArgumentError,
-          "unknown controlled spawn: #{controlled_spawn.inspect}"
+          "unknown entry spawn: #{entry_spawn.inspect}"
       end
-      private_class_method :validate_controlled_spawn!
+      private_class_method :validate_entry_spawn!
 
       def validate_relations!(relations, spawns)
         spawn_keys = spawns.map(&:key)

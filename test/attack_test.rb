@@ -9,7 +9,7 @@ class AttackTest < Minitest::Test
       terrain: Sunbird::Level::Terrain.new(width: 5, height: 5),
       spawns: [],
       relations: [],
-      controlled_spawn: nil
+      entry_spawn: nil
     )
   end
 

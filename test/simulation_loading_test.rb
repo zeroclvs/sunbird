@@ -28,18 +28,19 @@ class SimulationLoadingTest < Minitest::Test
           target: :hero
         )
       ],
-      controlled_spawn: :hero
+      entry_spawn: :hero
     )
 
     @simulation = Sunbird::Simulation.new(
       level: @level,
       entities: actor_catalog
     )
+    @hero_id = @simulation.instance_id_for_spawn(:hero)
   end
 
-  def test_controlled_instance_comes_from_level_spawn_key
+  def test_spawn_key_resolves_to_runtime_instance
     ref = @simulation.world_view.component(
-      @simulation.controlled_id,
+      @hero_id,
       :entity_ref
     )
 
@@ -50,7 +51,7 @@ class SimulationLoadingTest < Minitest::Test
     goblin_id = instance_id_for(@simulation, :goblin)
 
     assert_equal(
-      [@simulation.controlled_id],
+      [@hero_id],
       @simulation.world_view.relation_targets(
         kind: :targets,
         source_id: goblin_id

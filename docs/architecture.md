@@ -9,6 +9,8 @@ The Ruby program remains an architecture prototype rather than a commitment to R
 | Term | Meaning |
 | --- | --- |
 | `App` | executable shell connecting input, modes, rendering, and the host |
+| `Session` | owns persistent game state that survives level-local Simulation/World lifetimes |
+| `Party` | persistent roster of stable party-member identities and the current leader |
 | `ModeStack` | owns the active application/game mode |
 | `Mode` | decides how input/time advances gameplay |
 | `Simulation` | owns one loaded Level/World simulation and authoritative command application |
@@ -29,6 +31,8 @@ The Ruby program remains an architecture prototype rather than a commitment to R
 
 ```text
 App
+ |
+Session
  |
 ModeStack
  |
@@ -71,18 +75,18 @@ lib/sunbird/         implementation namespace
 
 Terrain carries both a semantic `render_key` and an ASCII fallback glyph. Gameplay consumes passability; presentation consumes render identity.
 
-World owns level-local mutable runtime state such as position, health, behavior, collision, and runtime relations. It is not intended to become the entire saved-game state; a JRPG branch can later add persistent session/party state above it.
+World owns level-local mutable runtime state such as position, health, behavior, collision, and runtime relations. `Session` now sits above that lifetime and owns a `Party` roster made of stable member identities. Session deliberately does not store World `InstanceId`s. Persistent actor statistics such as HP/MP/equipment are not modeled yet, so v0.3b avoids creating competing authoritative copies of those values.
 
 ## Simulation is not a clock
 
 The core operations remain:
 
 ```text
-Simulation#plan(input:)
+Simulation#plan(input:, controlled_id:)
 Simulation#step(commands:)
 ```
 
-`plan` reads Level + `World::View` through Planner and returns `Commands::Buffer`. It does not mutate World.
+`plan` reads Level + `World::View` through Planner and returns `Commands::Buffer`. It does not mutate World. The current mode supplies the runtime `controlled_id`; Simulation no longer owns a permanent player/control identity.
 
 `step` consumes explicit commands, asks Resolver to validate/apply them, and increments `step_number`.
 
@@ -92,7 +96,7 @@ A **step** is one authoritative state transition; it says nothing about wall-clo
 
 ## Modes own advancement policy
 
-`App` owns a `ModeStack`. The current `Mode::Exploration` advances after actionable input. A JRPG battle mode can advance on turns, while a future metroidvania mode can drive steps from a fixed-step scheduler.
+`App` owns a persistent `Session` plus a `ModeStack`. The current `Mode::Exploration` advances after actionable input and binds `Session#party.leader` to the Level `entry_spawn` for the lifetime of that loaded simulation. Other party members may exist in Session without having a World instance. A JRPG battle mode can later consume the whole party, while a future metroidvania mode can drive steps from a fixed-step scheduler.
 
 The common Simulation layer does not choose that policy.
 
@@ -239,8 +243,13 @@ The Ruby content representation is scaffolding, not the intended long-term persi
 
 ## v0.3b scope
 
-v0.3b preserves the v0.3a graphical presentation path and adds only a minimal terminal-input cleanup:
+v0.3b preserves the v0.3a graphical presentation path, keeps terminal input deliberately small, and establishes the first persistent JRPG-facing state above the level-local simulation:
 
+- persistent `Session` owned by `App`;
+- `Party` roster with stable member identities and a leader;
+- exploration-time binding from party leader to Level `entry_spawn`;
+- `Simulation#instance_id_for_spawn` as an explicit authored-spawn/runtime-instance bridge;
+- `Level#controlled_spawn` renamed to `Level#entry_spawn`, so Level no longer owns control policy;
 - persistent raw terminal mode owned by `Host::Terminal`;
 - safe standalone Escape handling and variable-length legacy arrow decoding;
 - Q/Escape/Ctrl-C quit handling;
@@ -266,6 +275,6 @@ Explicitly deferred:
 - camera/viewport scrolling;
 - sprite atlases or asset streaming;
 - JRPG battle/menu/dialogue systems;
-- persistent party/session state;
+- persistent actor statistics (HP/MP/equipment) and save serialization;
 - fixed-step metroidvania scheduling;
 - Raylib or 3D rendering.

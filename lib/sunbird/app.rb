@@ -19,13 +19,22 @@ module Sunbird
         entities: entities
       )
 
+      @session = Session.new(
+        party: Party.new(
+          members: [:hero, :mage],
+          leader: :hero
+        )
+      )
       simulation = Simulation.new(
         level: level,
         entities: entities
       )
       @modes = ModeStack.new
       @modes.push(
-        Mode::Exploration.new(simulation: simulation)
+        Mode::Exploration.new(
+          simulation: simulation,
+          session: @session
+        )
       )
 
       @mapper = Input::Mapper.new

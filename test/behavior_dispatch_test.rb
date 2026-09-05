@@ -21,7 +21,7 @@ class BehaviorDispatchTest < Minitest::Test
           y: 2
         )
       ],
-      controlled_spawn: :hero
+      entry_spawn: :hero
     )
 
     simulation = Sunbird::Simulation.new(
@@ -30,7 +30,10 @@ class BehaviorDispatchTest < Minitest::Test
     )
 
     error = assert_raises(ArgumentError) do
-      simulation.plan(input: Sunbird::Input::Snapshot.empty)
+      simulation.plan(
+        input: Sunbird::Input::Snapshot.empty,
+        controlled_id: simulation.instance_id_for_spawn(:hero)
+      )
     end
 
     assert_equal "unknown behavior: :unknown", error.message

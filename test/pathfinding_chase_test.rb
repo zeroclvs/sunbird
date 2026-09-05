@@ -48,7 +48,7 @@ class PathfindingChaseTest < Minitest::Test
           target: :hero
         )
       ],
-      controlled_spawn: :hero
+      entry_spawn: :hero
     )
 
     simulation = Sunbird::Simulation.new(

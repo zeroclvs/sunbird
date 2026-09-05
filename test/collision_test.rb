@@ -21,7 +21,7 @@ class CollisionTest < Minitest::Test
           y: 2
         )
       ],
-      controlled_spawn: :hero
+      entry_spawn: :hero
     )
 
     simulation = Sunbird::Simulation.new(
@@ -32,7 +32,7 @@ class CollisionTest < Minitest::Test
     advance_simulation(simulation, move_input(:move_east))
 
     position = simulation.world_view.component(
-      simulation.controlled_id,
+      simulation.instance_id_for_spawn(:hero),
       :position
     )
 

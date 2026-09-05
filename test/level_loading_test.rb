@@ -22,8 +22,8 @@ class LevelLoadingTest < Minitest::Test
     assert_equal 4, @level.spawns.length
   end
 
-  def test_level_owns_control_and_static_relations
-    assert_equal :player, @level.controlled_spawn
+  def test_level_owns_entry_spawn_and_static_relations
+    assert_equal :player, @level.entry_spawn
     assert_equal 3, @level.relations.length
     assert @level.relations.all? { |relation| relation.kind == :targets }
   end

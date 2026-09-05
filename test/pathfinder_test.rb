@@ -25,7 +25,7 @@ class PathfinderTest < Minitest::Test
       terrain: terrain,
       spawns: [],
       relations: [],
-      controlled_spawn: nil
+      entry_spawn: nil
     )
 
     world = Sunbird::World.new
@@ -54,7 +54,7 @@ class PathfinderTest < Minitest::Test
       terrain: Sunbird::Level::Terrain.new(width: 5, height: 5),
       spawns: [],
       relations: [],
-      controlled_spawn: nil
+      entry_spawn: nil
     )
 
     world = Sunbird::World.new

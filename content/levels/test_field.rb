@@ -96,7 +96,7 @@ module Sunbird
           )
         ].freeze,
 
-        controlled_spawn: :player
+        entry_spawn: :player
       )
     end
   end
