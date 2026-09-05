@@ -3,6 +3,14 @@
 module Sunbird
   class Simulation
     class Resolver
+      RETIRED_COMPONENTS = %i[
+        behavior
+        collision
+        renderable
+        combatant
+        interactable
+      ].freeze
+
       def initialize(movement: Movement.new)
         @movement = movement
       end
@@ -14,6 +22,8 @@ module Sunbird
             resolve_move(world, level, command)
           in Commands::Attack
             resolve_attack(world, command)
+          in Commands::Defeat
+            resolve_defeat(world, command)
           else
             raise ArgumentError,
               "unsupported command: #{command.inspect}"
@@ -45,10 +55,7 @@ module Sunbird
         world.set_component(
           command.instance_id,
           :position,
-          World::Position.new(
-            x: next_x,
-            y: next_y
-          )
+          World::Position.new(x: next_x, y: next_y)
         )
       end
 
@@ -85,10 +92,7 @@ module Sunbird
         world.set_component(
           command.target_id,
           :health,
-          World::Health.new(
-            current: current,
-            max: health.max
-          )
+          World::Health.new(current: current, max: health.max)
         )
       end
 
@@ -103,6 +107,17 @@ module Sunbird
 
         (attacker.x - target.x).abs +
           (attacker.y - target.y).abs == 1
+      end
+
+      def resolve_defeat(world, command)
+        return unless world.instance?(command.instance_id)
+
+        health = world.component(command.instance_id, :health)
+        return unless health&.current&.zero?
+
+        RETIRED_COMPONENTS.each do |name|
+          world.remove_component(command.instance_id, name)
+        end
       end
     end
   end

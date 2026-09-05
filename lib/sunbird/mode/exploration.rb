@@ -56,20 +56,38 @@ module Sunbird
       end
 
       def status_text
-        "WASD/arrows move. Enter/Space interact. Q or Esc quit. " \
-          "Step #{step_number}"
+        leader = session.party.leader
+        vitals = session.vitals(leader)
+
+        "#{leader.to_s.capitalize} " \
+          "HP #{vitals.hp}/#{vitals.max_hp} " \
+          "MP #{vitals.mp}/#{vitals.max_mp} | " \
+          "WASD/arrows move. Enter/Space interact. " \
+          "Q or Esc quit. Step #{step_number}"
       end
 
       private
 
       def interaction_transition
-        target_id = interaction_target_id
+        target_id = adjacent_target_id
         return unless target_id
 
         interactable = world_view.component(
           target_id,
           :interactable
         )
+        return dialogue_transition(interactable) if interactable
+
+        combatant = world_view.component(
+          target_id,
+          :combatant
+        )
+        return battle_transition(target_id) if combatant
+
+        nil
+      end
+
+      def dialogue_transition(interactable)
         lines = dialogues.fetch(interactable.dialogue_key)
 
         Push.new(
@@ -80,7 +98,16 @@ module Sunbird
         )
       end
 
-      def interaction_target_id
+      def battle_transition(target_id)
+        Push.new(
+          mode: Battle.new(
+            parent_mode: self,
+            enemy_id: target_id
+          )
+        )
+      end
+
+      def adjacent_target_id
         origin = world_view.component(
           controlled_instance_id,
           :position
@@ -104,13 +131,8 @@ module Sunbird
             instance_id,
             :position
           )
-          interactable = world_view.component(
-            instance_id,
-            :interactable
-          )
 
           position &&
-            interactable &&
             position.x == target_x &&
             position.y == target_y
         end

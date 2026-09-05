@@ -7,10 +7,6 @@ module Sunbird
         Entity.new(
           name: :player,
           components: {
-            health: World::Health.new(
-              current: 10,
-              max: 10
-            ),
             renderable: World::Renderable.new(
               render_key: :player,
               glyph: "P",
@@ -21,6 +17,9 @@ module Sunbird
             ),
             facing: World::Facing.new(
               direction: :south
+            ),
+            combatant: World::Combatant.new(
+              attack: 2
             )
           }.freeze
         ),
@@ -41,6 +40,9 @@ module Sunbird
             ),
             collision: World::Collision.new(
               blocks_movement: true
+            ),
+            combatant: World::Combatant.new(
+              attack: 1
             )
           }.freeze
         ),

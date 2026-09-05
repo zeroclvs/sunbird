@@ -3,17 +3,9 @@
 module Sunbird
   class Simulation
     module Commands
-      Move = Data.define(
-        :instance_id,
-        :dx,
-        :dy
-      )
-
-      Attack = Data.define(
-        :attacker_id,
-        :target_id,
-        :damage
-      )
+      Move = Data.define(:instance_id, :dx, :dy)
+      Attack = Data.define(:attacker_id, :target_id, :damage)
+      Defeat = Data.define(:instance_id)
 
       class Buffer
         include Enumerable

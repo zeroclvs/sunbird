@@ -29,7 +29,21 @@ module Sunbird
         party: Party.new(
           members: [:hero, :mage],
           leader: :hero
-        )
+        ),
+        vitals: {
+          hero: Session::Vitals.new(
+            hp: 10,
+            max_hp: 10,
+            mp: 4,
+            max_mp: 4
+          ),
+          mage: Session::Vitals.new(
+            hp: 8,
+            max_hp: 8,
+            mp: 8,
+            max_mp: 8
+          )
+        }
       )
       simulation = Simulation.new(
         level: level,

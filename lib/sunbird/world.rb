@@ -39,6 +39,11 @@ module Sunbird
       table_for(name)[instance_id] = component
     end
 
+    def remove_component(instance_id, name)
+      validate_instance!(instance_id)
+      @component_tables[name]&.delete(instance_id)
+    end
+
     def add_relation(kind:, source_id:, target_id:)
       validate_instance!(source_id)
       validate_instance!(target_id)

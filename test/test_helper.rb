@@ -30,9 +30,9 @@ module SunbirdTestSupport
     player = Sunbird::Entity.new(
       name: :player,
       components: {
-        health: Sunbird::World::Health.new(current: 10, max: 10),
         collision: Sunbird::World::Collision.new(blocks_movement: true),
-        facing: Sunbird::World::Facing.new(direction: :south)
+        facing: Sunbird::World::Facing.new(direction: :south),
+        combatant: Sunbird::World::Combatant.new(attack: 2)
       }.freeze
     )
     goblin = Sunbird::Entity.new(
@@ -40,7 +40,8 @@ module SunbirdTestSupport
       components: {
         health: Sunbird::World::Health.new(current: 4, max: 4),
         behavior: Sunbird::World::Behavior.new(kind: goblin_behavior),
-        collision: Sunbird::World::Collision.new(blocks_movement: true)
+        collision: Sunbird::World::Collision.new(blocks_movement: true),
+        combatant: Sunbird::World::Combatant.new(attack: 1)
       }.freeze
     )
     villager = Sunbird::Entity.new(
@@ -63,6 +64,29 @@ module SunbirdTestSupport
           "First line.",
           "Second line."
         ]
+      }
+    )
+  end
+
+  def test_session
+    Sunbird::Session.new(
+      party: Sunbird::Party.new(
+        members: [:hero, :mage],
+        leader: :hero
+      ),
+      vitals: {
+        hero: Sunbird::Session::Vitals.new(
+          hp: 10,
+          max_hp: 10,
+          mp: 4,
+          max_mp: 4
+        ),
+        mage: Sunbird::Session::Vitals.new(
+          hp: 8,
+          max_hp: 8,
+          mp: 8,
+          max_mp: 8
+        )
       }
     )
   end

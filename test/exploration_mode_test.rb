@@ -27,15 +27,10 @@ class ExplorationModeTest < Minitest::Test
       level: level,
       entities: actor_catalog
     )
-    session = Sunbird::Session.new(
-      party: Sunbird::Party.new(
-        members: [:hero, :mage],
-        leader: :hero
-      )
-    )
+    @session = test_session
     @mode = Sunbird::Mode::Exploration.new(
       simulation: simulation,
-      session: session,
+      session: @session,
       dialogues: dialogue_catalog
     )
   end
@@ -54,6 +49,20 @@ class ExplorationModeTest < Minitest::Test
     assert_equal hero_id, @mode.instance_id_for_party_member(:hero)
     assert_nil @mode.instance_id_for_party_member(:mage)
     assert_equal [2, 2], [position.x, position.y]
+  end
+
+  def test_party_leader_world_instance_does_not_own_health
+    hero_id = @mode.controlled_instance_id
+
+    assert_nil @mode.world_view.component(hero_id, :health)
+    assert_equal 10, @session.vitals(:hero).hp
+  end
+
+  def test_status_uses_persistent_session_vitals
+    @session.damage(:hero, 3)
+    @session.spend_mp(:hero, 1)
+
+    assert_match "Hero HP 7/10 MP 3/4", @mode.status_text
   end
 
   def test_blocked_move_still_changes_facing
