@@ -7,10 +7,17 @@ require_relative "sunbird/content/ruby_source"
 require_relative "sunbird/dialogue/catalog"
 require_relative "sunbird/dialogue/loader"
 
-require_relative "sunbird/world/components"
-require_relative "sunbird/world/component_table"
-require_relative "sunbird/world/relations"
-require_relative "sunbird/world/view"
+require_relative "sunbird/actor_state"
+require_relative "sunbird/actor_bindings"
+require_relative "sunbird/effects"
+
+require_relative "sunbird/area_state/components"
+require_relative "sunbird/area_state/component_table"
+require_relative "sunbird/area_state/relations"
+require_relative "sunbird/area_state/view"
+require_relative "sunbird/area_state"
+
+# Transitional v0.4 compatibility alias for v0.3 callers/tests.
 require_relative "sunbird/world"
 
 require_relative "sunbird/entity"
@@ -27,6 +34,7 @@ require_relative "sunbird/input/action"
 require_relative "sunbird/input/mapper"
 require_relative "sunbird/input/handoff"
 require_relative "sunbird/input/snapshot"
+
 require_relative "sunbird/simulation/commands"
 require_relative "sunbird/simulation/relevance"
 require_relative "sunbird/simulation/movement"
@@ -40,6 +48,7 @@ require_relative "sunbird/mode/transitions"
 require_relative "sunbird/mode/dialogue"
 require_relative "sunbird/mode/battle"
 require_relative "sunbird/mode/exploration"
+
 require_relative "sunbird/render/scene"
 require_relative "sunbird/render/projector"
 require_relative "sunbird/render/ascii"

@@ -30,25 +30,41 @@ module SunbirdTestSupport
     player = Sunbird::Entity.new(
       name: :player,
       components: {
-        collision: Sunbird::World::Collision.new(blocks_movement: true),
-        facing: Sunbird::World::Facing.new(direction: :south),
-        combatant: Sunbird::World::Combatant.new(attack: 2)
+        collision: Sunbird::AreaState::Collision.new(
+          blocks_movement: true
+        ),
+        facing: Sunbird::AreaState::Facing.new(
+          direction: :south
+        )
       }.freeze
     )
+
     goblin = Sunbird::Entity.new(
       name: :goblin,
       components: {
-        health: Sunbird::World::Health.new(current: 4, max: 4),
-        behavior: Sunbird::World::Behavior.new(kind: goblin_behavior),
-        collision: Sunbird::World::Collision.new(blocks_movement: true),
-        combatant: Sunbird::World::Combatant.new(attack: 1)
+        health: Sunbird::AreaState::Health.new(
+          current: 4,
+          max: 4
+        ),
+        behavior: Sunbird::AreaState::Behavior.new(
+          kind: goblin_behavior
+        ),
+        collision: Sunbird::AreaState::Collision.new(
+          blocks_movement: true
+        ),
+        combatant: Sunbird::AreaState::Combatant.new(
+          attack: 1
+        )
       }.freeze
     )
+
     villager = Sunbird::Entity.new(
       name: :villager,
       components: {
-        collision: Sunbird::World::Collision.new(blocks_movement: true),
-        interactable: Sunbird::World::Interactable.new(
+        collision: Sunbird::AreaState::Collision.new(
+          blocks_movement: true
+        ),
+        interactable: Sunbird::AreaState::Interactable.new(
           dialogue_key: :village_greeting
         )
       }.freeze
@@ -74,18 +90,28 @@ module SunbirdTestSupport
         members: [:hero, :mage],
         leader: :hero
       ),
-      vitals: {
-        hero: Sunbird::Session::Vitals.new(
-          hp: 10,
-          max_hp: 10,
-          mp: 4,
-          max_mp: 4
+      actors: {
+        hero: Sunbird::ActorState.new(
+          vitals: Sunbird::ActorState::Vitals.new(
+            hp: 10,
+            max_hp: 10,
+            mp: 4,
+            max_mp: 4
+          ),
+          stats: Sunbird::ActorState::Stats.new(
+            attack: 2
+          )
         ),
-        mage: Sunbird::Session::Vitals.new(
-          hp: 8,
-          max_hp: 8,
-          mp: 8,
-          max_mp: 8
+        mage: Sunbird::ActorState.new(
+          vitals: Sunbird::ActorState::Vitals.new(
+            hp: 8,
+            max_hp: 8,
+            mp: 8,
+            max_mp: 8
+          ),
+          stats: Sunbird::ActorState::Stats.new(
+            attack: 1
+          )
         )
       }
     )
@@ -145,8 +171,11 @@ module SunbirdTestSupport
   end
 
   def instance_id_for(simulation, entity_name)
-    simulation.world_view.instance_ids.find do |instance_id|
-      ref = simulation.world_view.component(instance_id, :entity_ref)
+    simulation.area_view.instance_ids.find do |instance_id|
+      ref = simulation.area_view.component(
+        instance_id,
+        :entity_ref
+      )
       ref&.name == entity_name
     end
   end

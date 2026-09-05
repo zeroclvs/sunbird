@@ -5,16 +5,27 @@ require_relative "test_helper"
 class ChaseBehaviorTest < Minitest::Test
   include SunbirdTestSupport
 
-  def test_adjacent_chaser_attacks_target
+  def test_adjacent_chaser_damages_bound_persistent_actor
     simulation = build_simulation(
       hero_position: [3, 3],
       goblin_position: [2, 3]
     )
+    session = test_session
 
-    advance_simulation(simulation, Sunbird::Input::Snapshot.empty)
+    exploration = Sunbird::Mode::Exploration.new(
+      simulation: simulation,
+      session: session,
+      dialogues: dialogue_catalog
+    )
 
-    health = simulation.world_view.component(simulation.instance_id_for_spawn(:hero), :health)
-    assert_equal 9, health.current
+    exploration.advance(
+      input: Sunbird::Input::Snapshot.empty
+    )
+
+    assert_equal 9, session.actor(:hero).vitals.hp
+
+    hero_id = simulation.instance_id_for_spawn(:hero)
+    assert_nil simulation.area_view.component(hero_id, :health)
   end
 
   def test_chaser_moves_toward_non_adjacent_target
@@ -24,9 +35,16 @@ class ChaseBehaviorTest < Minitest::Test
     )
     goblin_id = instance_id_for(simulation, :goblin)
 
-    advance_simulation(simulation, Sunbird::Input::Snapshot.empty)
+    advance_simulation(
+      simulation,
+      Sunbird::Input::Snapshot.empty
+    )
 
-    position = simulation.world_view.component(goblin_id, :position)
+    position = simulation.area_view.component(
+      goblin_id,
+      :position
+    )
+
     assert_equal [3, 3], [position.x, position.y]
   end
 

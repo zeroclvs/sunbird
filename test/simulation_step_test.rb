@@ -37,7 +37,7 @@ class SimulationStepTest < Minitest::Test
     )
 
     result = @simulation.step(commands: commands)
-    position = @simulation.world_view.component(
+    position = @simulation.area_view.component(
       @hero_id,
       :position
     )
@@ -47,12 +47,54 @@ class SimulationStepTest < Minitest::Test
     assert_equal 1, @simulation.step_number
   end
 
+  def test_step_yields_persistent_effects_without_changing_return_contract
+    @simulation.bind_actor(
+      actor_key: :hero,
+      instance_id: @hero_id
+    )
+
+    attacker_id = @simulation.instance_id_for_spawn(:hero)
+
+    # A second local instance adjacent to the hero.
+    area = @simulation.instance_variable_get(:@area_state)
+    enemy_id = area.spawn(
+      position: Sunbird::AreaState::Position.new(
+        x: 3,
+        y: 2
+      )
+    )
+
+    commands = Sunbird::Simulation::Commands::Buffer.new(
+      [
+        Sunbird::Simulation::Commands::Attack.new(
+          attacker_id: enemy_id,
+          target_id: attacker_id,
+          damage: 1
+        )
+      ]
+    )
+
+    yielded = nil
+    result = @simulation.step(commands: commands) do |effects|
+      yielded = effects
+    end
+
+    assert_equal 1, result
+    assert_equal 1, @simulation.step_number
+    assert_equal 1, yielded.length
+    assert_instance_of(
+      Sunbird::Effects::DamageActor,
+      yielded.first
+    )
+    assert_equal :hero, yielded.first.actor_key
+  end
+
   def test_plan_does_not_advance_world
     commands = @simulation.plan(
       input: move_input(:move_east),
       controlled_id: @hero_id
     )
-    position = @simulation.world_view.component(
+    position = @simulation.area_view.component(
       @hero_id,
       :position
     )
@@ -63,6 +105,6 @@ class SimulationStepTest < Minitest::Test
   end
 
   def test_world_view_has_no_mutation_api
-    refute_respond_to @simulation.world_view, :set_component
+    refute_respond_to @simulation.area_view, :set_component
   end
 end

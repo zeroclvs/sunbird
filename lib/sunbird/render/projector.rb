@@ -3,12 +3,19 @@
 module Sunbird
   module Render
     class Projector
-      def project(level:, world:)
+      def project(level:, area: nil, world: nil)
+        area ||= world
+
+        unless area
+          raise ArgumentError,
+            "Render::Projector requires an area view"
+        end
+
         Scene.new(
           width: level.width,
           height: level.height,
           tiles: project_tiles(level),
-          instances: project_instances(level, world)
+          instances: project_instances(level, area)
         )
       end
 
@@ -27,8 +34,8 @@ module Sunbird
         end.flatten.freeze
       end
 
-      def project_instances(level, world)
-        renderables(world).filter_map do |
+      def project_instances(level, area)
+        renderables(area).filter_map do |
           instance_id,
           position,
           renderable
@@ -49,14 +56,13 @@ module Sunbird
         end.freeze
       end
 
-      def renderables(world)
-        world.instance_ids.filter_map do |instance_id|
-          position = world.component(
+      def renderables(area)
+        area.instance_ids.filter_map do |instance_id|
+          position = area.component(
             instance_id,
             :position
           )
-
-          renderable = world.component(
+          renderable = area.component(
             instance_id,
             :renderable
           )

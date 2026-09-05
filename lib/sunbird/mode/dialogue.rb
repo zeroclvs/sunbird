@@ -36,9 +36,12 @@ module Sunbird
         parent_mode.level
       end
 
-      def world_view
-        parent_mode.world_view
+      def area_view
+        parent_mode.area_view
       end
+
+      # Transitional v0.4 compatibility alias.
+      alias world_view area_view
 
       def step_number
         parent_mode.step_number

@@ -2,162 +2,181 @@
 
 module Sunbird
   class Session
-    Vitals = Data.define(
-      :hp,
-      :max_hp,
-      :mp,
-      :max_mp
-    )
+    # Transitional alias for v0.3 callers. New v0.4 code should use
+    # ActorState::Vitals directly.
+    Vitals = ActorState::Vitals
 
     attr_reader :party
 
-    def initialize(party:, vitals:)
+    def initialize(actors:, party: nil)
+      @actors = normalize_actors(actors)
       @party = party
-      @vitals = normalize_vitals(vitals)
-      validate_party_vitals!
+      validate_party_actors! if party
     end
 
-    def vitals(member)
-      @vitals.fetch(normalize_member(member))
+    def actor(actor_key)
+      @actors.fetch(normalize_actor_key(actor_key))
     end
 
-    def damage(member, amount)
+    def actor_keys
+      @actors.keys.freeze
+    end
+
+    def vitals(actor_key)
+      actor(actor_key).vitals
+    end
+
+    def stats(actor_key)
+      actor(actor_key).stats
+    end
+
+    def apply_effect(effect)
+      case effect
+      in Effects::DamageActor
+        damage_actor(
+          effect.actor_key,
+          effect.amount
+        )
+      else
+        raise ArgumentError,
+          "unsupported persistent effect: #{effect.inspect}"
+      end
+    end
+
+    def apply_effects(effects)
+      effects.each do |effect|
+        apply_effect(effect)
+      end
+    end
+
+    def damage_actor(actor_key, amount)
       validate_amount!(amount)
 
-      current = vitals(member)
-      replace_vitals(
-        member,
-        hp: [current.hp - amount, 0].max,
-        mp: current.mp
+      current = actor(actor_key)
+      vitals = current.vitals
+
+      replace_actor_vitals(
+        actor_key,
+        hp: [vitals.hp - amount, 0].max,
+        mp: vitals.mp
       )
     end
 
-    def heal(member, amount)
+    def heal_actor(actor_key, amount)
       validate_amount!(amount)
 
-      current = vitals(member)
-      replace_vitals(
-        member,
-        hp: [current.hp + amount, current.max_hp].min,
-        mp: current.mp
+      current = actor(actor_key)
+      vitals = current.vitals
+
+      replace_actor_vitals(
+        actor_key,
+        hp: [vitals.hp + amount, vitals.max_hp].min,
+        mp: vitals.mp
       )
     end
 
-    def spend_mp(member, amount)
+    def spend_actor_mp(actor_key, amount)
       validate_amount!(amount)
 
-      current = vitals(member)
-      return false if amount > current.mp
+      current = actor(actor_key)
+      vitals = current.vitals
+      return false if amount > vitals.mp
 
-      replace_vitals(
-        member,
-        hp: current.hp,
-        mp: current.mp - amount
+      replace_actor_vitals(
+        actor_key,
+        hp: vitals.hp,
+        mp: vitals.mp - amount
       )
       true
     end
 
-    def restore_mp(member, amount)
+    def restore_actor_mp(actor_key, amount)
       validate_amount!(amount)
 
-      current = vitals(member)
-      replace_vitals(
-        member,
-        hp: current.hp,
-        mp: [current.mp + amount, current.max_mp].min
+      current = actor(actor_key)
+      vitals = current.vitals
+
+      replace_actor_vitals(
+        actor_key,
+        hp: vitals.hp,
+        mp: [vitals.mp + amount, vitals.max_mp].min
       )
     end
 
+    # v0.3 compatibility names.
+    alias damage damage_actor
+    alias heal heal_actor
+    alias spend_mp spend_actor_mp
+    alias restore_mp restore_actor_mp
+
     private
 
-    def normalize_vitals(vitals)
-      unless vitals.is_a?(Hash)
-        raise ArgumentError, "session vitals must be a Hash"
+    def normalize_actors(actors)
+      unless actors.is_a?(Hash)
+        raise ArgumentError, "session actors must be a Hash"
       end
 
-      vitals.to_h do |member, value|
-        normalized_member = normalize_member(member)
-        validate_vitals!(normalized_member, value)
-        [normalized_member, value]
+      normalized = {}
+
+      actors.each do |actor_key, state|
+        key = normalize_actor_key(actor_key)
+
+        if normalized.key?(key)
+          raise ArgumentError,
+            "duplicate persistent actor: #{key.inspect}"
+        end
+
+        unless state.is_a?(ActorState)
+          raise ArgumentError,
+            "invalid actor state for #{key.inspect}: #{state.inspect}"
+        end
+
+        normalized[key] = state
       end
+
+      normalized
     end
 
-    def validate_party_vitals!
-      missing = party.members.reject { |member| @vitals.key?(member) }
-      unless missing.empty?
-        raise ArgumentError,
-          "missing session vitals for: #{missing.inspect}"
+    def validate_party_actors!
+      missing = party.members.reject do |member|
+        @actors.key?(member)
       end
 
-      unknown = @vitals.keys.reject { |member| party.include?(member) }
-      unless unknown.empty?
-        raise ArgumentError,
-          "session vitals contain non-party members: #{unknown.inspect}"
-      end
-    end
+      return if missing.empty?
 
-    def validate_vitals!(member, value)
-      unless value.is_a?(Vitals)
-        raise ArgumentError,
-          "invalid vitals for #{member.inspect}: #{value.inspect}"
-      end
-
-      values = [
-        value.hp,
-        value.max_hp,
-        value.mp,
-        value.max_mp
-      ]
-      unless values.all? { |number| number.is_a?(Integer) }
-        raise ArgumentError,
-          "vitals must use integer values for #{member.inspect}"
-      end
-
-      unless value.max_hp.positive?
-        raise ArgumentError,
-          "max_hp must be positive for #{member.inspect}"
-      end
-
-      if value.max_mp.negative?
-        raise ArgumentError,
-          "max_mp must not be negative for #{member.inspect}"
-      end
-
-      unless value.hp.between?(0, value.max_hp)
-        raise ArgumentError,
-          "hp is outside 0..max_hp for #{member.inspect}"
-      end
-
-      unless value.mp.between?(0, value.max_mp)
-        raise ArgumentError,
-          "mp is outside 0..max_mp for #{member.inspect}"
-      end
+      raise ArgumentError,
+        "missing persistent actors for party members: #{missing.inspect}"
     end
 
     def validate_amount!(amount)
       return if amount.is_a?(Integer) && amount >= 0
 
       raise ArgumentError,
-        "vital change amount must be a non-negative Integer"
+        "actor state change amount must be a non-negative Integer"
     end
 
-    def normalize_member(member)
-      member.to_sym
+    def normalize_actor_key(actor_key)
+      actor_key.to_sym
     end
 
-    def replace_vitals(member, hp:, mp:)
-      key = normalize_member(member)
-      current = vitals(key)
+    def replace_actor_vitals(actor_key, hp:, mp:)
+      key = normalize_actor_key(actor_key)
+      current = actor(key)
+      vitals = current.vitals
 
-      replacement = Vitals.new(
+      replacement_vitals = ActorState::Vitals.new(
         hp: hp,
-        max_hp: current.max_hp,
+        max_hp: vitals.max_hp,
         mp: mp,
-        max_mp: current.max_mp
+        max_mp: vitals.max_mp
       )
-      validate_vitals!(key, replacement)
-      @vitals[key] = replacement
-      replacement
+
+      replacement = current.with(
+        vitals: replacement_vitals
+      )
+
+      @actors[key] = replacement
+      replacement.vitals
     end
   end
 end

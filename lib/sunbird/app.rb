@@ -30,25 +30,37 @@ module Sunbird
           members: [:hero, :mage],
           leader: :hero
         ),
-        vitals: {
-          hero: Session::Vitals.new(
-            hp: 10,
-            max_hp: 10,
-            mp: 4,
-            max_mp: 4
+        actors: {
+          hero: ActorState.new(
+            vitals: ActorState::Vitals.new(
+              hp: 10,
+              max_hp: 10,
+              mp: 4,
+              max_mp: 4
+            ),
+            stats: ActorState::Stats.new(
+              attack: 2
+            )
           ),
-          mage: Session::Vitals.new(
-            hp: 8,
-            max_hp: 8,
-            mp: 8,
-            max_mp: 8
+          mage: ActorState.new(
+            vitals: ActorState::Vitals.new(
+              hp: 8,
+              max_hp: 8,
+              mp: 8,
+              max_mp: 8
+            ),
+            stats: ActorState::Stats.new(
+              attack: 1
+            )
           )
         }
       )
+
       simulation = Simulation.new(
         level: level,
         entities: entities
       )
+
       @modes = ModeStack.new
       @modes.push(
         Mode::Exploration.new(
@@ -108,7 +120,7 @@ module Sunbird
       mode = @modes.current
       scene = @projector.project(
         level: mode.level,
-        world: mode.world_view
+        area: mode.area_view
       )
       synchronized = @renderer.synchronized_updates?
       @host.begin_synchronized_update if synchronized

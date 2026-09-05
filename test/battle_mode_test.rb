@@ -23,6 +23,7 @@ class BattleModeTest < Minitest::Test
       ],
       entry_spawn: :hero
     )
+
     simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog
@@ -40,16 +41,17 @@ class BattleModeTest < Minitest::Test
     )
   end
 
-  def test_attack_turn_damages_enemy_world_and_party_session
+  def test_attack_uses_persistent_actor_stats
     result = @battle.advance(input: action_input(:interact))
 
     assert_equal :advanced, result
     assert_equal 1, @battle.step_number
     assert_equal 2, enemy_health.current
-    assert_equal 9, @session.vitals(:hero).hp
+    assert_equal 9, @session.actor(:hero).vitals.hp
 
     hero_id = @exploration.controlled_instance_id
-    assert_nil @battle.world_view.component(hero_id, :health)
+    assert_nil @battle.area_view.component(hero_id, :health)
+    assert_nil @battle.area_view.component(hero_id, :combatant)
   end
 
   def test_winning_turn_pops_without_enemy_retaliation
@@ -60,18 +62,18 @@ class BattleModeTest < Minitest::Test
     assert_equal :pop, result
     assert_equal 2, @battle.step_number
     assert_equal 0, enemy_health.current
-    assert_equal 9, @session.vitals(:hero).hp
-    assert_nil @battle.world_view.component(@enemy_id, :renderable)
-    assert_nil @battle.world_view.component(@enemy_id, :collision)
-    assert_nil @battle.world_view.component(@enemy_id, :behavior)
-    assert_nil @battle.world_view.component(@enemy_id, :combatant)
+    assert_equal 9, @session.actor(:hero).vitals.hp
+    assert_nil @battle.area_view.component(@enemy_id, :renderable)
+    assert_nil @battle.area_view.component(@enemy_id, :collision)
+    assert_nil @battle.area_view.component(@enemy_id, :behavior)
+    assert_nil @battle.area_view.component(@enemy_id, :combatant)
   end
 
   def test_damage_persists_after_return_to_exploration
     @battle.advance(input: action_input(:interact))
     @battle.advance(input: action_input(:cancel))
 
-    assert_equal 9, @session.vitals(:hero).hp
+    assert_equal 9, @session.actor(:hero).vitals.hp
     assert_match "Hero HP 9/10", @exploration.status_text
   end
 
@@ -81,10 +83,10 @@ class BattleModeTest < Minitest::Test
     assert_equal :pop, result
     assert_equal 0, @battle.step_number
     assert_equal 4, enemy_health.current
-    assert_equal 10, @session.vitals(:hero).hp
+    assert_equal 10, @session.actor(:hero).vitals.hp
   end
 
-  def test_status_text_uses_session_hp_and_mp
+  def test_status_text_uses_persistent_actor_vitals
     assert_match "Hero HP 10/10 MP 4/4", @battle.status_text
     assert_match "Goblin HP 4/4", @battle.status_text
   end
@@ -92,6 +94,6 @@ class BattleModeTest < Minitest::Test
   private
 
   def enemy_health
-    @battle.world_view.component(@enemy_id, :health)
+    @battle.area_view.component(@enemy_id, :health)
   end
 end

@@ -23,6 +23,7 @@ class ExplorationModeTest < Minitest::Test
       ],
       entry_spawn: :hero
     )
+
     simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog
@@ -42,25 +43,30 @@ class ExplorationModeTest < Minitest::Test
     assert_equal 1, @mode.step_number
   end
 
-  def test_party_leader_is_bound_to_level_entry_spawn
+  def test_party_leader_has_explicit_actor_binding
     hero_id = @mode.controlled_instance_id
-    position = @mode.world_view.component(hero_id, :position)
+    position = @mode.area_view.component(hero_id, :position)
 
-    assert_equal hero_id, @mode.instance_id_for_party_member(:hero)
+    assert_instance_of Sunbird::ActorBindings, @mode.actor_bindings
+    assert_equal hero_id, @mode.actor_bindings.fetch(:hero)
     assert_nil @mode.instance_id_for_party_member(:mage)
     assert_equal [2, 2], [position.x, position.y]
   end
 
-  def test_party_leader_world_instance_does_not_own_health
+  def test_party_leader_local_instance_has_no_persistent_combat_state
     hero_id = @mode.controlled_instance_id
 
-    assert_nil @mode.world_view.component(hero_id, :health)
-    assert_equal 10, @session.vitals(:hero).hp
+    assert_nil @mode.area_view.component(hero_id, :health)
+    assert_nil @mode.area_view.component(hero_id, :combatant)
+
+    hero = @session.actor(:hero)
+    assert_equal 10, hero.vitals.hp
+    assert_equal 2, hero.stats.attack
   end
 
-  def test_status_uses_persistent_session_vitals
-    @session.damage(:hero, 3)
-    @session.spend_mp(:hero, 1)
+  def test_status_uses_persistent_actor_state
+    @session.damage_actor(:hero, 3)
+    @session.spend_actor_mp(:hero, 1)
 
     assert_match "Hero HP 7/10 MP 3/4", @mode.status_text
   end
@@ -69,8 +75,8 @@ class ExplorationModeTest < Minitest::Test
     @mode.advance(input: move_input(:move_east))
 
     hero_id = @mode.controlled_instance_id
-    position = @mode.world_view.component(hero_id, :position)
-    facing = @mode.world_view.component(hero_id, :facing)
+    position = @mode.area_view.component(hero_id, :position)
+    facing = @mode.area_view.component(hero_id, :facing)
 
     assert_equal [2, 2], [position.x, position.y]
     assert_equal :east, facing.direction

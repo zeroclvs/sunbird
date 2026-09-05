@@ -10,13 +10,13 @@ module Sunbird
         east: [1, 0].freeze
       }.freeze
 
-      attr_reader :simulation, :session, :dialogues
+      attr_reader :simulation, :session, :dialogues, :actor_bindings
 
       def initialize(simulation:, session:, dialogues:)
         @simulation = simulation
         @session = session
         @dialogues = dialogues
-        @party_instances = bind_party_leader.freeze
+        @actor_bindings = bind_party_leader
       end
 
       def advance(input:)
@@ -31,7 +31,11 @@ module Sunbird
           input: input,
           controlled_id: controlled_instance_id
         )
-        simulation.step(commands: commands)
+
+        simulation.step(commands: commands) do |effects|
+          session.apply_effects(effects)
+        end
+
         :advanced
       end
 
@@ -39,25 +43,28 @@ module Sunbird
         simulation.level
       end
 
-      def world_view
-        simulation.world_view
+      def area_view
+        simulation.area_view
       end
+
+      # Transitional v0.4 compatibility alias.
+      alias world_view area_view
 
       def step_number
         simulation.step_number
       end
 
       def controlled_instance_id
-        @party_instances.fetch(session.party.leader)
+        actor_bindings.fetch(session.party.leader)
       end
 
       def instance_id_for_party_member(member)
-        @party_instances[member.to_sym]
+        actor_bindings[member]
       end
 
       def status_text
         leader = session.party.leader
-        vitals = session.vitals(leader)
+        vitals = session.actor(leader).vitals
 
         "#{leader.to_s.capitalize} " \
           "HP #{vitals.hp}/#{vitals.max_hp} " \
@@ -72,13 +79,13 @@ module Sunbird
         target_id = adjacent_target_id
         return unless target_id
 
-        interactable = world_view.component(
+        interactable = area_view.component(
           target_id,
           :interactable
         )
         return dialogue_transition(interactable) if interactable
 
-        combatant = world_view.component(
+        combatant = area_view.component(
           target_id,
           :combatant
         )
@@ -108,11 +115,11 @@ module Sunbird
       end
 
       def adjacent_target_id
-        origin = world_view.component(
+        origin = area_view.component(
           controlled_instance_id,
           :position
         )
-        facing = world_view.component(
+        facing = area_view.component(
           controlled_instance_id,
           :facing
         )
@@ -124,10 +131,10 @@ module Sunbird
         target_x = origin.x + offset[0]
         target_y = origin.y + offset[1]
 
-        world_view.instance_ids.find do |instance_id|
+        area_view.instance_ids.find do |instance_id|
           next if instance_id == controlled_instance_id
 
-          position = world_view.component(
+          position = area_view.component(
             instance_id,
             :position
           )
@@ -140,14 +147,24 @@ module Sunbird
 
       def bind_party_leader
         entry_spawn = simulation.level.entry_spawn
+
         unless entry_spawn
           raise ArgumentError,
             "exploration level has no entry spawn"
         end
 
-        {
-          session.party.leader => simulation.instance_id_for_spawn(entry_spawn)
-        }
+        actor_key = session.party.leader
+        instance_id =
+          simulation.instance_id_for_spawn(entry_spawn)
+
+        simulation.bind_actor(
+          actor_key: actor_key,
+          instance_id: instance_id
+        )
+
+        ActorBindings.new(
+          actor_key => instance_id
+        )
       end
     end
   end

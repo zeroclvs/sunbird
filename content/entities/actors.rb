@@ -7,41 +7,38 @@ module Sunbird
         Entity.new(
           name: :player,
           components: {
-            renderable: World::Renderable.new(
+            renderable: AreaState::Renderable.new(
               render_key: :player,
               glyph: "P",
               layer: 10
             ),
-            collision: World::Collision.new(
+            collision: AreaState::Collision.new(
               blocks_movement: true
             ),
-            facing: World::Facing.new(
+            facing: AreaState::Facing.new(
               direction: :south
-            ),
-            combatant: World::Combatant.new(
-              attack: 2
             )
           }.freeze
         ),
         Entity.new(
           name: :goblin,
           components: {
-            health: World::Health.new(
+            health: AreaState::Health.new(
               current: 4,
               max: 4
             ),
-            renderable: World::Renderable.new(
+            renderable: AreaState::Renderable.new(
               render_key: :goblin,
               glyph: "G",
               layer: 10
             ),
-            behavior: World::Behavior.new(
+            behavior: AreaState::Behavior.new(
               kind: :chase
             ),
-            collision: World::Collision.new(
+            collision: AreaState::Collision.new(
               blocks_movement: true
             ),
-            combatant: World::Combatant.new(
+            combatant: AreaState::Combatant.new(
               attack: 1
             )
           }.freeze
@@ -49,15 +46,15 @@ module Sunbird
         Entity.new(
           name: :villager,
           components: {
-            renderable: World::Renderable.new(
+            renderable: AreaState::Renderable.new(
               render_key: :villager,
               glyph: "V",
               layer: 10
             ),
-            collision: World::Collision.new(
+            collision: AreaState::Collision.new(
               blocks_movement: true
             ),
-            interactable: World::Interactable.new(
+            interactable: AreaState::Interactable.new(
               dialogue_key: :village_greeting
             )
           }.freeze
