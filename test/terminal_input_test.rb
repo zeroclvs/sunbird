@@ -10,6 +10,12 @@ class TerminalInputTest < Minitest::Test
     assert_equal :q, read("q")
   end
 
+  def test_reads_interaction_keys
+    assert_equal :enter, read("\r")
+    assert_equal :enter, read("\n")
+    assert_equal :space, read(" ")
+  end
+
   def test_reads_legacy_arrow_keys
     assert_equal :up, read("\e[A")
     assert_equal :down, read("\e[B")

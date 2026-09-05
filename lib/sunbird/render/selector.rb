@@ -7,7 +7,7 @@ module Sunbird
 
       REQUIRED_PROTOCOL = :kitty
       ERROR_MESSAGE =
-        "Sunbird v0.3b requires Kitty graphics protocol support"
+        "Sunbird v0.3c requires Kitty graphics protocol support"
 
       def self.build(capabilities:, assets: nil)
         unless capabilities.graphics_protocol == REQUIRED_PROTOCOL

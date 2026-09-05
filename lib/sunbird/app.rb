@@ -12,12 +12,19 @@ module Sunbird
       __dir__
     )
 
+    DIALOGUE_PATH = File.expand_path(
+      "../../content/dialogue/test_field.rb",
+      __dir__
+    )
+
     def initialize(env: ENV)
       entities = Entity::Loader.load(ENTITY_PATH)
       level = Level::Loader.load(
         LEVEL_PATH,
         entities: entities
       )
+      dialogues = Dialogue::Loader.load(DIALOGUE_PATH)
+
       @session = Session.new(
         party: Party.new(
           members: [:hero, :mage],
@@ -32,7 +39,8 @@ module Sunbird
       @modes.push(
         Mode::Exploration.new(
           simulation: simulation,
-          session: @session
+          session: @session,
+          dialogues: dialogues
         )
       )
 
@@ -63,6 +71,8 @@ module Sunbird
 
         result = @modes.current.advance(input: snapshot)
         break if result == :quit
+
+        apply_mode_result(result)
       end
     ensure
       finish_renderer
@@ -70,6 +80,15 @@ module Sunbird
     end
 
     private
+
+    def apply_mode_result(result)
+      case result
+      when Mode::Push
+        @modes.push(result.mode)
+      when :pop
+        @modes.pop
+      end
+    end
 
     def draw
       mode = @modes.current
@@ -93,8 +112,9 @@ module Sunbird
     end
 
     def status_text(mode)
-      "WASD or arrow keys to move. Q or Esc to quit. " \
-        "Step #{mode.step_number}"
+      return mode.status_text if mode.respond_to?(:status_text)
+
+      "Q or Esc to quit. Step #{mode.step_number}"
     end
 
     def finish_renderer

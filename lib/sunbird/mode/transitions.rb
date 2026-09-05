@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
 module Sunbird
-  VERSION = "0.3c"
+  module Mode
+    Push = Data.define(:mode)
+  end
 end

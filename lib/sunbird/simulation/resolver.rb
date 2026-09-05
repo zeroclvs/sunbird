@@ -29,6 +29,8 @@ module Sunbird
         position = world.component(command.instance_id, :position)
         return unless position
 
+        update_facing(world, command)
+
         next_x = position.x + command.dx
         next_y = position.y + command.dy
 
@@ -50,6 +52,29 @@ module Sunbird
         )
       end
 
+      def update_facing(world, command)
+        current = world.component(command.instance_id, :facing)
+        return unless current
+
+        direction = direction_for(command.dx, command.dy)
+        return unless direction
+
+        world.set_component(
+          command.instance_id,
+          :facing,
+          World::Facing.new(direction: direction)
+        )
+      end
+
+      def direction_for(dx, dy)
+        case [dx, dy]
+        when [0, -1] then :north
+        when [0, 1] then :south
+        when [-1, 0] then :west
+        when [1, 0] then :east
+        end
+      end
+
       def resolve_attack(world, command)
         return unless valid_attack?(world, command)
 
@@ -57,7 +82,6 @@ module Sunbird
         return unless health
 
         current = [health.current - command.damage, 0].max
-
         world.set_component(
           command.target_id,
           :health,

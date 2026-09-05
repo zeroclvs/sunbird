@@ -18,6 +18,11 @@ module SunbirdTestPaths
     "../content/levels/test_field.rb",
     __dir__
   )
+
+  DIALOGUE_PATH = File.expand_path(
+    "../content/dialogue/test_field.rb",
+    __dir__
+  )
 end
 
 module SunbirdTestSupport
@@ -26,10 +31,10 @@ module SunbirdTestSupport
       name: :player,
       components: {
         health: Sunbird::World::Health.new(current: 10, max: 10),
-        collision: Sunbird::World::Collision.new(blocks_movement: true)
+        collision: Sunbird::World::Collision.new(blocks_movement: true),
+        facing: Sunbird::World::Facing.new(direction: :south)
       }.freeze
     )
-
     goblin = Sunbird::Entity.new(
       name: :goblin,
       components: {
@@ -38,8 +43,28 @@ module SunbirdTestSupport
         collision: Sunbird::World::Collision.new(blocks_movement: true)
       }.freeze
     )
+    villager = Sunbird::Entity.new(
+      name: :villager,
+      components: {
+        collision: Sunbird::World::Collision.new(blocks_movement: true),
+        interactable: Sunbird::World::Interactable.new(
+          dialogue_key: :village_greeting
+        )
+      }.freeze
+    )
 
-    Sunbird::Entity::Catalog.new([player, goblin])
+    Sunbird::Entity::Catalog.new([player, goblin, villager])
+  end
+
+  def dialogue_catalog
+    Sunbird::Dialogue::Catalog.new(
+      {
+        village_greeting: [
+          "First line.",
+          "Second line."
+        ]
+      }
+    )
   end
 
   def level_with(
@@ -61,7 +86,7 @@ module SunbirdTestSupport
     )
   end
 
-  def move_input(kind)
+  def action_input(kind)
     Sunbird::Input::Snapshot.from(
       [
         Sunbird::Input::Action.new(
@@ -70,6 +95,10 @@ module SunbirdTestSupport
         )
       ]
     )
+  end
+
+  def move_input(kind)
+    action_input(kind)
   end
 
   def advance_simulation(
