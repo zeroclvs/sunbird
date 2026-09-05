@@ -18,10 +18,12 @@ module Sunbird
             ),
             collision: World::Collision.new(
               blocks_movement: true
+            ),
+            facing: World::Facing.new(
+              direction: :south
             )
           }.freeze
         ),
-
         Entity.new(
           name: :goblin,
           components: {
@@ -39,6 +41,22 @@ module Sunbird
             ),
             collision: World::Collision.new(
               blocks_movement: true
+            )
+          }.freeze
+        ),
+        Entity.new(
+          name: :villager,
+          components: {
+            renderable: World::Renderable.new(
+              render_key: :villager,
+              glyph: "V",
+              layer: 10
+            ),
+            collision: World::Collision.new(
+              blocks_movement: true
+            ),
+            interactable: World::Interactable.new(
+              dialogue_key: :village_greeting
             )
           }.freeze
         )

@@ -9,7 +9,7 @@ module Sunbird
       ESCAPE_TIMEOUT = 0.04
       MAX_ESCAPE_BYTES = 24
 
-      LETTER_KEYS = {
+      SIMPLE_KEYS = {
         "w" => :w,
         "W" => :w,
         "a" => :a,
@@ -20,6 +20,9 @@ module Sunbird
         "D" => :d,
         "q" => :q,
         "Q" => :q,
+        "\r" => :enter,
+        "\n" => :enter,
+        " " => :space,
         "\u0003" => :q
       }.freeze
 
@@ -39,7 +42,7 @@ module Sunbird
         first = read_byte
         return unless first
 
-        mapped = LETTER_KEYS[first]
+        mapped = SIMPLE_KEYS[first]
         return mapped if mapped
         return unless first == ESCAPE
 

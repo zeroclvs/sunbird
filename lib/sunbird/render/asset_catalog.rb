@@ -14,7 +14,8 @@ module Sunbird
         water: "water.png",
         wall: "wall.png",
         player: "player.png",
-        goblin: "goblin.png"
+        goblin: "goblin.png",
+        villager: "villager.png"
       }.freeze
 
       PNG_SIGNATURE = "\x89PNG\r\n\x1A\n".b

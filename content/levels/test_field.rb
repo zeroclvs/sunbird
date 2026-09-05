@@ -5,7 +5,6 @@ module Sunbird
     module Definitions
       TestField = Definition.new(
         name: :test_field,
-
         tiles: {
           " " => Tile.new(
             render_key: :ground,
@@ -33,7 +32,6 @@ module Sunbird
             passable: false
           )
         }.freeze,
-
         rows: [
           "____________________________________________",
           '|      """"                ~~~~~           |',
@@ -50,12 +48,17 @@ module Sunbird
           '|                                          |',
           "____________________________________________"
         ].map!(&:freeze).freeze,
-
         spawns: [
           Spawn.new(
             key: :player,
             entity: :player,
             x: 3,
+            y: 3
+          ),
+          Spawn.new(
+            key: :villager,
+            entity: :villager,
+            x: 5,
             y: 3
           ),
           Spawn.new(
@@ -77,7 +80,6 @@ module Sunbird
             y: 11
           )
         ].freeze,
-
         relations: [
           Relation.new(
             kind: :targets,
@@ -95,7 +97,6 @@ module Sunbird
             target: :player
           )
         ].freeze,
-
         entry_spawn: :player
       )
     end

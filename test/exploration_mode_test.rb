@@ -13,11 +13,16 @@ class ExplorationModeTest < Minitest::Test
           entity: :player,
           x: 2,
           y: 2
+        ),
+        Sunbird::Level::Spawn.new(
+          key: :villager,
+          entity: :villager,
+          x: 3,
+          y: 2
         )
       ],
       entry_spawn: :hero
     )
-
     simulation = Sunbird::Simulation.new(
       level: level,
       entities: actor_catalog
@@ -30,12 +35,13 @@ class ExplorationModeTest < Minitest::Test
     )
     @mode = Sunbird::Mode::Exploration.new(
       simulation: simulation,
-      session: session
+      session: session,
+      dialogues: dialogue_catalog
     )
   end
 
   def test_exploration_mode_decides_when_simulation_advances
-    result = @mode.advance(input: move_input(:move_east))
+    result = @mode.advance(input: move_input(:move_south))
 
     assert_equal :advanced, result
     assert_equal 1, @mode.step_number
@@ -50,18 +56,42 @@ class ExplorationModeTest < Minitest::Test
     assert_equal [2, 2], [position.x, position.y]
   end
 
-  def test_quit_input_does_not_advance_simulation
-    input = Sunbird::Input::Snapshot.from(
-      [
-        Sunbird::Input::Action.new(
-          kind: :quit,
-          state: :pressed
-        )
-      ]
-    )
-    result = @mode.advance(input: input)
+  def test_blocked_move_still_changes_facing
+    @mode.advance(input: move_input(:move_east))
 
-    assert_equal :quit, result
+    hero_id = @mode.controlled_instance_id
+    position = @mode.world_view.component(hero_id, :position)
+    facing = @mode.world_view.component(hero_id, :facing)
+
+    assert_equal [2, 2], [position.x, position.y]
+    assert_equal :east, facing.direction
+    assert_equal 1, @mode.step_number
+  end
+
+  def test_interaction_pushes_dialogue_without_advancing_simulation
+    @mode.advance(input: move_input(:move_east))
+    before = @mode.step_number
+
+    result = @mode.advance(input: action_input(:interact))
+
+    assert_instance_of Sunbird::Mode::Push, result
+    assert_instance_of Sunbird::Mode::Dialogue, result.mode
+    assert_equal "First line.", result.mode.current_line
+    assert_equal before, @mode.step_number
+  end
+
+  def test_interact_without_target_does_not_advance
+    result = @mode.advance(input: action_input(:interact))
+
+    assert_equal :idle, result
+    assert_equal 0, @mode.step_number
+  end
+
+  def test_quit_and_cancel_do_not_advance_simulation
+    assert_equal :quit, @mode.advance(input: action_input(:quit))
+    assert_equal 0, @mode.step_number
+
+    assert_equal :quit, @mode.advance(input: action_input(:cancel))
     assert_equal 0, @mode.step_number
   end
 end
