@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+require_relative "test_helper"
+
+class AsciiRendererPolicyTest < Minitest::Test
+  def test_ascii_keeps_full_redraw_policy
+    renderer = Sunbird::Render::Ascii.new
+    scene = Sunbird::Render::Scene.new(
+      width: 2,
+      height: 3,
+      tiles: [],
+      instances: []
+    )
+
+    assert renderer.clear_before_render?
+    refute renderer.synchronized_updates?
+    assert_equal 4, renderer.status_row(scene)
+  end
+end

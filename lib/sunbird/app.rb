@@ -12,7 +12,7 @@ module Sunbird
       __dir__
     )
 
-    def initialize
+    def initialize(env: ENV)
       entities = Entity::Loader.load(ENTITY_PATH)
       level = Level::Loader.load(
         LEVEL_PATH,
@@ -23,7 +23,6 @@ module Sunbird
         level: level,
         entities: entities
       )
-
       @modes = ModeStack.new
       @modes.push(
         Mode::Exploration.new(simulation: simulation)
@@ -33,12 +32,15 @@ module Sunbird
       @handoff = Input::Handoff.new
 
       @projector = Render::Projector.new
-      @renderer = Render::Ascii.new
-      @host = Host::Terminal.new
+      @host = Host::Terminal.new(env: env)
+      @renderer = Render::Selector.build(
+        capabilities: @host.capabilities,
+        env: env
+      )
     end
 
     def run
-      @host.hide_cursor
+      @host.enter_application
 
       loop do
         draw
@@ -46,7 +48,6 @@ module Sunbird
         physical_event = @host.read_event
         action = @mapper.map(physical_event)
         next unless action
-
         @handoff.push(action)
         @handoff.flip!
 
@@ -58,8 +59,8 @@ module Sunbird
         break if result == :quit
       end
     ensure
-      @host.show_cursor
-      @host.clear
+      finish_renderer
+      @host.leave_application
     end
 
     private
@@ -71,11 +72,31 @@ module Sunbird
         world: mode.world_view
       )
 
-      @host.clear
-      @host.write(@renderer.render(scene))
-      @host.write(
-        "\n\nWASD or arrow keys to move. Q to quit. "         "Step #{mode.step_number}\n"
-      )
+      synchronized = @renderer.synchronized_updates?
+      @host.begin_synchronized_update if synchronized
+
+      begin
+        @host.clear if @renderer.clear_before_render?
+        @host.write(@renderer.render(scene))
+        @host.write_status(
+          row: @renderer.status_row(scene),
+          text: status_text(mode)
+        )
+      ensure
+        @host.end_synchronized_update if synchronized
+      end
+    end
+
+    def status_text(mode)
+      "WASD or arrow keys to move. Q to quit. " \
+        "Step #{mode.step_number}"
+    end
+
+    def finish_renderer
+      return unless @renderer.respond_to?(:finish)
+
+      output = @renderer.finish
+      @host.write(output) unless output.empty?
     end
   end
 end

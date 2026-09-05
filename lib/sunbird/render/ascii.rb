@@ -3,6 +3,18 @@
 module Sunbird
   module Render
     class Ascii
+      def clear_before_render?
+        true
+      end
+
+      def synchronized_updates?
+        false
+      end
+
+      def status_row(scene)
+        scene.height + 1
+      end
+
       def render(scene)
         cells = Array.new(scene.height) do
           Array.new(scene.width, " ")
