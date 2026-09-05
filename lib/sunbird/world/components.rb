@@ -14,5 +14,6 @@ module Sunbird
     Collision = Data.define(:blocks_movement)
     Facing = Data.define(:direction)
     Interactable = Data.define(:dialogue_key)
+    Combatant = Data.define(:attack)
   end
 end
