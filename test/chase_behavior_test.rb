@@ -13,7 +13,7 @@ class ChaseBehaviorTest < Minitest::Test
 
     advance_simulation(simulation, Sunbird::Input::Snapshot.empty)
 
-    health = simulation.world_view.component(simulation.controlled_id, :health)
+    health = simulation.world_view.component(simulation.instance_id_for_spawn(:hero), :health)
     assert_equal 9, health.current
   end
 
@@ -55,7 +55,7 @@ class ChaseBehaviorTest < Minitest::Test
           target: :hero
         )
       ],
-      controlled_spawn: :hero
+      entry_spawn: :hero
     )
 
     Sunbird::Simulation.new(

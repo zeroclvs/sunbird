@@ -18,6 +18,9 @@ require_relative "sunbird/level"
 require_relative "sunbird/level/terrain"
 require_relative "sunbird/level/loader"
 
+require_relative "sunbird/party"
+require_relative "sunbird/session"
+
 require_relative "sunbird/input/action"
 require_relative "sunbird/input/mapper"
 require_relative "sunbird/input/handoff"

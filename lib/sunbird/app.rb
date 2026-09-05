@@ -18,24 +18,30 @@ module Sunbird
         LEVEL_PATH,
         entities: entities
       )
-
+      @session = Session.new(
+        party: Party.new(
+          members: [:hero, :mage],
+          leader: :hero
+        )
+      )
       simulation = Simulation.new(
         level: level,
         entities: entities
       )
       @modes = ModeStack.new
       @modes.push(
-        Mode::Exploration.new(simulation: simulation)
+        Mode::Exploration.new(
+          simulation: simulation,
+          session: @session
+        )
       )
 
       @mapper = Input::Mapper.new
       @handoff = Input::Handoff.new
-
       @projector = Render::Projector.new
       @host = Host::Terminal.new(env: env)
       @renderer = Render::Selector.build(
-        capabilities: @host.capabilities,
-        env: env
+        capabilities: @host.capabilities
       )
     end
 
@@ -48,9 +54,9 @@ module Sunbird
         physical_event = @host.read_event
         action = @mapper.map(physical_event)
         next unless action
+
         @handoff.push(action)
         @handoff.flip!
-
         snapshot = Input::Snapshot.from(
           @handoff.take_completed
         )
@@ -71,7 +77,6 @@ module Sunbird
         level: mode.level,
         world: mode.world_view
       )
-
       synchronized = @renderer.synchronized_updates?
       @host.begin_synchronized_update if synchronized
 
@@ -88,7 +93,7 @@ module Sunbird
     end
 
     def status_text(mode)
-      "WASD or arrow keys to move. Q to quit. " \
+      "WASD or arrow keys to move. Q or Esc to quit. " \
         "Step #{mode.step_number}"
     end
 

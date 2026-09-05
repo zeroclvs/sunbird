@@ -23,7 +23,7 @@ class TerminalCapabilitiesTest < Minitest::Test
     assert_equal :kitty, capabilities.graphics_protocol
   end
 
-  def test_unknown_terminal_keeps_ascii_capability
+  def test_unknown_terminal_reports_no_graphics_protocol
     capabilities = Sunbird::Host::TerminalCapabilities.detect(
       env: { "TERM" => "xterm-256color" }
     )

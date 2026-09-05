@@ -2,9 +2,9 @@
 
 Sunbird is an experimental game-runtime foundation written in Ruby.
 
-It explores a small data-oriented architecture for grid-based games while keeping simulation, gameplay policy, presentation, and platform I/O separate. The current demo is an action-driven exploration game that can render as plain ASCII or as PNG tiles/sprites through the Kitty graphics protocol.
+It explores a small data-oriented architecture for grid-based games while keeping simulation, gameplay policy, presentation, and platform I/O separate. The current v0.3 line targets Kitty terminal graphics and an action-driven JRPG-style exploration prototype.
 
-**Current version:** `v0.3a`
+**Current version:** `v0.3b`
 
 ## Current state
 
@@ -12,22 +12,22 @@ Sunbird currently includes:
 
 - integer runtime instance IDs and array-backed component storage;
 - immutable `Level` data and mutable level-local `World` state;
+- persistent `Session` state with a party roster and stable party-member identities;
 - authored spawn-key relations resolved to runtime instance relations;
 - explicit commands with authoritative resolution;
 - table-driven NPC behavior, BFS pathfinding, collision, movement, and attacks;
 - `ModeStack` with an action-driven exploration mode;
 - `Simulation#plan` separated from `Simulation#step`;
 - backend-neutral `Render::Scene` projection;
-- semantic render keys with ASCII fallback glyphs;
-- an ASCII renderer;
-- a Kitty graphics renderer using PNG assets;
-- automatic Kitty/ASCII renderer selection at the terminal boundary.
+- semantic render keys and PNG assets;
+- a Kitty graphics renderer with persistent image placements;
+- persistent raw terminal input with WASD, arrows, Escape, Q, and Ctrl-C handling.
 
-The current test level uses the same simulation in both renderers. Goblins route around blocked terrain and attack when adjacent.
+The current test level has the same simulation behavior established earlier: goblins route around blocked terrain and attack when adjacent.
 
 ## Rendering
 
-The render path is:
+The active v0.3b render path is:
 
 ```text
 Level + World::View
@@ -37,28 +37,29 @@ Render::Projector
         |
         v
 Render::Scene
-       / \
-      /   \
- ASCII   Kitty
-          |
-       PNG assets
+        |
+        v
+Render::Kitty
+        |
+        v
+PNG assets
+        |
+        v
+Host::Terminal
 ```
 
-`Render::Scene` is backend-neutral. `Render::Ascii` uses fallback glyphs and keeps the simple full-screen redraw model. `Render::Kitty` maps semantic render keys such as `:player`, `:goblin`, and `:water` to PNG files under `content/sprites/`, uploads each image once, and keeps stable terminal placements between frames.
+`Render::Scene` remains backend-neutral because the presentation boundary is intended to survive the later Raylib transition.
 
-Kitty is selected automatically when Sunbird detects a Kitty terminal environment. To force a renderer:
+`Render::Kitty` maps semantic render keys such as `:player`, `:goblin`, and `:water` to PNG files under `content/sprites/`, uploads each image once, and keeps stable placements between frames.
 
-```sh
-SUNBIRD_RENDERER=ascii bundle exec ruby bin/sunbird
-SUNBIRD_RENDERER=kitty bundle exec ruby bin/sunbird
-```
-
-The explicit `kitty` override is useful when testing another terminal that implements the Kitty graphics protocol but is not yet recognized by v0.3a's conservative auto-detection.
+The older `Render::Ascii` implementation and fallback-glyph metadata are still present in the source tree as legacy/reference code, but v0.3b no longer selects the ASCII renderer at runtime. The dual ASCII/Kitty state is preserved historically in v0.3a.
 
 ## Architecture
 
 ```text
                     App
+                     |
+                  Session
                      |
                  ModeStack
                      |
@@ -81,26 +82,28 @@ The explicit `kitty` override is useful when testing another terminal that imple
                               |
                               v
                        Render::Scene
-                         /        \
-                  Render::Ascii  Render::Kitty
-                         \        /
-                          \      /
-                        Host::Terminal
+                              |
+                              v
+                       Render::Kitty
+                              |
+                              v
+                       Host::Terminal
 ```
 
-A simulation **step is a state transition, not a clock tick**. The active mode decides when a step occurs. Rendering remains independent of simulation authority.
+A simulation **step is a state transition, not a clock tick**. The active mode decides when a step occurs. `Session` owns persistent party identity above the level-local Simulation/World, and Exploration binds the current party leader to the Level entry spawn.
 
 See [`docs/architecture.md`](docs/architecture.md) for details.
 
 ## Requirements
 
-Ruby 3.2 or newer.
+- Ruby 3.2 or newer
+- Kitty, or another terminal environment currently detected as supporting the Kitty graphics protocol
+
+Install dependencies:
 
 ```sh
 bundle install
 ```
-
-For graphical rendering, use Kitty or force the Kitty backend in another terminal that supports the Kitty graphics protocol.
 
 ## Run
 
@@ -115,8 +118,10 @@ W / ↑    move north
 S / ↓    move south
 A / ←    move west
 D / →    move east
-Q        quit
+Q / Esc  quit
 ```
+
+If Kitty graphics support is not detected, v0.3b exits instead of silently falling back to ASCII.
 
 ## Tests
 
@@ -127,4 +132,6 @@ bundle exec ruby -Itest -e \
 
 ## Project status
 
-`v0.3a` is the first graphical-terminal milestone. It keeps the v0.3 runtime foundation intact while adding a small renderer-facing asset layer and a Kitty protocol backend with persistent placements, synchronized redraws, and alternate-screen lifecycle. Kitty keyboard input, animation/interpolation, JRPG battle/menu systems, persistent party state, and fixed-step action scheduling remain later work.
+`v0.3b` keeps terminal input deliberately small before the planned Raylib transition and introduces the first persistent JRPG-facing state above the level-local simulation: `Session` owns a `Party`, while `Mode::Exploration` binds the party leader to the current Level entry spawn.
+
+Enhanced Kitty press/release event handling, animation/interpolation, persistent actor stats (HP/MP/equipment), JRPG battle/menu/dialogue systems, save data, and fixed-step action scheduling remain later work. Raylib is planned as the primary graphics/input transition for v0.4.

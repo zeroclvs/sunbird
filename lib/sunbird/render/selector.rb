@@ -3,29 +3,16 @@
 module Sunbird
   module Render
     class Selector
-      VALID = %w[auto ascii kitty].freeze
+      class UnsupportedTerminal < StandardError; end
 
-      def self.build(capabilities:, env: ENV, assets: nil)
-        requested = env.fetch(
-          "SUNBIRD_RENDERER",
-          "auto"
-        ).downcase
+      REQUIRED_PROTOCOL = :kitty
+      ERROR_MESSAGE =
+        "Sunbird v0.3b requires Kitty graphics protocol support"
 
-        unless VALID.include?(requested)
-          raise ArgumentError,
-            "unknown renderer: #{requested.inspect}"
+      def self.build(capabilities:, assets: nil)
+        unless capabilities.graphics_protocol == REQUIRED_PROTOCOL
+          raise UnsupportedTerminal, ERROR_MESSAGE
         end
-
-        use_kitty = case requested
-        when "kitty"
-          true
-        when "ascii"
-          false
-        else
-          capabilities.graphics_protocol == :kitty
-        end
-
-        return Ascii.new unless use_kitty
 
         Kitty.new(
           assets: assets || AssetCatalog.default

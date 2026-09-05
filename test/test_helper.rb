@@ -47,7 +47,7 @@ module SunbirdTestSupport
     height: 7,
     spawns:,
     relations: [],
-    controlled_spawn:
+    entry_spawn:
   )
     Sunbird::Level.new(
       name: :test,
@@ -57,7 +57,7 @@ module SunbirdTestSupport
       ),
       spawns: spawns,
       relations: relations,
-      controlled_spawn: controlled_spawn
+      entry_spawn: entry_spawn
     )
   end
 
@@ -72,9 +72,23 @@ module SunbirdTestSupport
     )
   end
 
-  def advance_simulation(simulation, input)
-    commands = simulation.plan(input: input)
+  def advance_simulation(
+    simulation,
+    input,
+    controlled_id: default_controlled_id(simulation)
+  )
+    commands = simulation.plan(
+      input: input,
+      controlled_id: controlled_id
+    )
     simulation.step(commands: commands)
+  end
+
+  def default_controlled_id(simulation)
+    entry_spawn = simulation.level.entry_spawn
+    return unless entry_spawn
+
+    simulation.instance_id_for_spawn(entry_spawn)
   end
 
   def instance_id_for(simulation, entity_name)

@@ -10,6 +10,28 @@ class HostTerminalTest < Minitest::Test
     end
   end
 
+  FakeConsole = Struct.new(:mode, :raw_options, keyword_init: true) do
+    def tty?
+      true
+    end
+
+    def console_mode
+      mode
+    end
+
+    def console_mode=(value)
+      self.mode = value
+    end
+
+    def raw!(**options)
+      self.raw_options = options
+    end
+
+    def read(_length)
+      nil
+    end
+  end
+
   def test_terminal_owns_transport_and_reports_protocol_capabilities
     output = StringIO.new
     host = Sunbird::Host::Terminal.new(
@@ -45,6 +67,24 @@ class HostTerminalTest < Minitest::Test
       "\e[?25h\e[?1049l",
       output.string
     )
+  end
+
+  def test_application_lifecycle_owns_raw_input_mode
+    output = StringIO.new
+    input = FakeConsole.new(mode: :original)
+    host = Sunbird::Host::Terminal.new(
+      input: input,
+      output: output,
+      env: { "TERM" => "xterm-kitty" }
+    )
+
+    host.enter_application
+
+    assert_equal({ min: 1, time: 0 }, input.raw_options)
+
+    host.leave_application
+
+    assert_equal :original, input.mode
   end
 
   def test_status_updates_erase_only_the_status_line
