@@ -14,11 +14,66 @@ class HostTerminalTest < Minitest::Test
     output = StringIO.new
     host = Sunbird::Host::Terminal.new(
       output: output,
-      input_adapter: FakeInput.new(:right)
+      input_adapter: FakeInput.new(:right),
+      env: { "TERM" => "xterm-256color" }
     )
 
     assert_equal :right, host.read_event
     assert_nil host.capabilities.graphics_protocol
     assert_equal :legacy, host.capabilities.keyboard_protocol
+  end
+
+  def test_terminal_reports_kitty_graphics_capability
+    host = Sunbird::Host::Terminal.new(
+      output: StringIO.new,
+      input_adapter: FakeInput.new(:right),
+      env: { "TERM" => "xterm-kitty" }
+    )
+
+    assert_equal :kitty, host.capabilities.graphics_protocol
+  end
+
+  def test_application_lifecycle_uses_alternate_screen
+    output = StringIO.new
+    host = host_with(output)
+
+    host.enter_application
+    host.leave_application
+
+    assert_equal(
+      "\e[?1049h\e[2J\e[H\e[?25l" \
+      "\e[?25h\e[?1049l",
+      output.string
+    )
+  end
+
+  def test_status_updates_erase_only_the_status_line
+    output = StringIO.new
+    host = host_with(output)
+
+    host.write_status(row: 15, text: "Step 4")
+
+    assert_equal "\e[15;1H\e[2KStep 4", output.string
+    refute_includes output.string, "\e[2J"
+  end
+
+  def test_synchronized_update_controls_are_exposed
+    output = StringIO.new
+    host = host_with(output)
+
+    host.begin_synchronized_update
+    host.end_synchronized_update
+
+    assert_equal "\e[?2026h\e[?2026l", output.string
+  end
+
+  private
+
+  def host_with(output)
+    Sunbird::Host::Terminal.new(
+      output: output,
+      input_adapter: FakeInput.new(:right),
+      env: { "TERM" => "xterm-kitty" }
+    )
   end
 end

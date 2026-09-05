@@ -37,8 +37,12 @@ require_relative "sunbird/mode/exploration"
 require_relative "sunbird/render/scene"
 require_relative "sunbird/render/projector"
 require_relative "sunbird/render/ascii"
+require_relative "sunbird/render/asset_catalog"
+require_relative "sunbird/render/kitty"
+require_relative "sunbird/render/selector"
 
 require_relative "sunbird/host"
+require_relative "sunbird/host/terminal_capabilities"
 require_relative "sunbird/host/terminal_input"
 require_relative "sunbird/host/terminal"
 
